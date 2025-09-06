@@ -13,8 +13,11 @@ The system uses Cloudflare Workers, KV storage, D1 database, and Queues to creat
 ## Architecture
 
 ### Monorepo Structure
-- `shortener/` - Edge worker that handles redirects and sends analytics to queue
+- `resolver/` - Main worker that handles URL redirects with KV caching and D1 fallback
+- `shortener/` - Edge worker that handles redirects and sends analytics to queue (legacy)
 - `queue-processor/` - Consumer worker that processes analytics events from queue
+- `migrations/` - D1 database migration files
+- `scripts/` - Utility scripts for database migrations and deployment
 - Root workspace managed with pnpm workspaces
 
 ### Data Flow
@@ -37,6 +40,9 @@ pnpm install
 
 ### Development (Local)
 ```bash
+# Run resolver worker locally (main worker)
+cd resolver && pnpm dev
+
 # Run shortener worker locally
 cd shortener && pnpm dev
 
@@ -46,6 +52,9 @@ cd queue-processor && pnpm dev
 
 ### Deploy Workers
 ```bash
+# Deploy resolver worker (main worker)
+cd resolver && pnpm deploy
+
 # Deploy shortener worker
 cd shortener && pnpm deploy
 
@@ -53,8 +62,23 @@ cd shortener && pnpm deploy
 cd queue-processor && pnpm deploy
 ```
 
+### Database Migrations
+```bash
+# Run all migrations
+./scripts/migrate.sh
+
+# Run migrations with custom database ID
+./scripts/migrate.sh your-database-id
+
+# Verify tables were created
+wrangler d1 execute --remote --command=".tables" --database="1c57b49e-f457-458d-806c-913315f3c20c"
+```
+
 ### Generate Types
 ```bash
+# Generate Cloudflare types for resolver
+cd resolver && pnpm cf-typegen
+
 # Generate Cloudflare types for shortener
 cd shortener && pnpm cf-typegen
 
@@ -64,6 +88,9 @@ cd queue-processor && pnpm cf-typegen
 
 ### Testing
 ```bash
+# Run tests for resolver (when implemented)
+cd resolver && pnpm test
+
 # Run tests for shortener (when implemented)
 cd shortener && pnpm test
 ```
@@ -83,10 +110,13 @@ cd shortener && pnpm test
 - Consumer: queue-processor worker
 - Queue must be created in Cloudflare dashboard before deployment
 
-### Database Schema (from README)
-- **URLs table**: stores shortened URLs with metadata
-- **Analytics table**: stores click analytics with user agent, geo data, etc.
-- KV structure: `{shortCode: {url, cached_at, ttl}}`
+### Database Schema 
+- **Links table**: Primary table storing short codes and destination URLs
+  - `short_code` (TEXT, UNIQUE): The short identifier for the URL
+  - `destination` (TEXT): The original long URL to redirect to
+  - Common helper fields: `id`, `created_at`, `updated_at`, `expires_at`, `created_by`, `is_active`, `click_count`, `metadata`
+- **Analytics table**: stores click analytics with user agent, geo data, etc. (to be added)
+- KV structure: `{shortCode: destination_url}` with TTL caching
 
 ## Performance Considerations
 
@@ -107,6 +137,17 @@ cd shortener && pnpm test
 
 Before deployment:
 1. Create `shortener-analytics` queue in Cloudflare dashboard
-2. Set up D1 database with URLs and analytics tables
+2. Create D1 database and run migrations: `./scripts/migrate.sh`
 3. Create KV namespace for URL caching
 4. Configure wrangler.jsonc with proper bindings for KV, D1, and queue
+
+## Database Migrations
+
+Database migrations are located in `migrations/` directory:
+- `0001_create_links_table.sql` - Creates the main links table with proper indexes
+
+### Migration Files Structure
+- Follow naming convention: `NNNN_description.sql`
+- Include `IF NOT EXISTS` for safe re-running
+- Add performance indexes for frequently queried columns
+- Include both up and down migration logic where applicable

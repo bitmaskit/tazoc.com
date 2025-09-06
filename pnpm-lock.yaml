@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  dummy:
+  resolver:
     devDependencies:
       typescript:
         specifier: ^5.5.2

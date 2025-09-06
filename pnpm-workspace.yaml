@@ -1,3 +1,4 @@
 packages:
   - "shortener/*"
   - "queue-processor/*"
+  - "resolver/*"
