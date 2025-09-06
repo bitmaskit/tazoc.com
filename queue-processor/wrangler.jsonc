@@ -1,0 +1,19 @@
+// https://developers.cloudflare.com/workers/wrangler/configuration/
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "queue-processor",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-09-06",
+	"observability": {
+		"enabled": true,
+	},
+	"placement": { "mode": "smart" },
+	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+	"queues": {
+		"consumers": [
+			{
+				"queue": "shortener-analytics",
+			},
+		],
+	},
+}
