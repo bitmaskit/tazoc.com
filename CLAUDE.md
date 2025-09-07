@@ -16,6 +16,7 @@ The system uses Cloudflare Workers, KV storage, D1 database, and Queues to creat
 - `resolver/` - Main worker that handles URL redirects with KV caching and D1 fallback
 - `shortener/` - Edge worker that handles redirects and sends analytics to queue (legacy)
 - `queue-processor/` - Consumer worker that processes analytics events from queue
+- `types/` - Shared TypeScript interfaces and types (accessed via `@/types/*`)
 - `migrations/` - D1 database migration files
 - `scripts/` - Utility scripts for database migrations and deployment
 - Root workspace managed with pnpm workspaces
@@ -115,7 +116,12 @@ cd shortener && pnpm test
   - `short_code` (TEXT, UNIQUE): The short identifier for the URL
   - `destination` (TEXT): The original long URL to redirect to
   - Common helper fields: `id`, `created_at`, `updated_at`, `expires_at`, `created_by`, `is_active`, `click_count`, `metadata`
-- **Analytics table**: stores click analytics with user agent, geo data, etc. (to be added)
+- **Analytics table**: Stores comprehensive click analytics (planned)
+  - Geographic data: country, continent, region, city
+  - Network info: ASN, ISP organization, Cloudflare colo
+  - Device data: user agent, language, referer
+  - Quality metrics: bot score, verification status
+  - Request metadata: IP, protocol, timestamp
 - KV structure: `{shortCode: destination_url}` with TTL caching
 
 ## Performance Considerations
@@ -127,10 +133,11 @@ cd shortener && pnpm test
 
 ## Development Notes
 
-- Current implementation is basic starter code
-- Shortener worker needs full redirect logic with KV/D1 integration
-- Queue processor needs analytics parsing and D1 storage logic
-- Both workers use TypeScript with strict mode enabled
+- **TypeScript Configuration**: All workers use strict TypeScript with path mapping
+- **Import Paths**: Use `@/types/*` to import shared types from root `types/` directory
+- **Analytics Pipeline**: Complete analytics data collection implemented, queue processing ready for D1 storage
+- **Landing Page**: Friendly UI served at root path via static assets
+- **Type Safety**: `AnalyticsData` interface ensures consistent data structure across workers
 - No Go code in this project (contrary to global instructions)
 
 ## Infrastructure Requirements
@@ -151,3 +158,30 @@ Database migrations are located in `migrations/` directory:
 - Include `IF NOT EXISTS` for safe re-running
 - Add performance indexes for frequently queried columns
 - Include both up and down migration logic where applicable
+
+## TypeScript Configuration
+
+### Path Mapping
+All workers are configured with TypeScript path mapping for clean imports:
+- `@/*` - Maps to project root
+- `@/types/*` - Maps to shared types directory
+
+### Shared Types
+- `AnalyticsData` interface defines the structure for analytics data
+- `AnalyticsRecord` extends AnalyticsData for database storage
+- `QueueAnalyticsMessage` structures queue messages with metadata
+
+### Usage Examples
+```typescript
+import type { AnalyticsData } from '@/types/analytics-data';
+
+// Type-safe analytics data collection
+const analyticsData: AnalyticsData = {
+  shortCode: 'abc123',
+  timestamp: new Date().toISOString(),
+  country: 'US',
+  botScore: 99,
+  isBot: false,
+  // ... other fields
+};
+```
