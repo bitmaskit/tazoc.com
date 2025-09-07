@@ -1,3 +1,5 @@
+import type { AnalyticsData } from '@/types/analytics-data';
+
 export default {
 	async fetch(req, env, ctx): Promise<Response> {
 		const url = new URL(req.url);
@@ -26,11 +28,27 @@ export default {
 			console.log(`Pathname: ${url.pathname}, Short code: ${shortCode}`);
 			return new Response(`Not found: ${shortCode}`, { status: 404 });
 		}
-		await env.shortener_analytics.send({
-			url: req.url,
-			method: req.method,
-			headers: Object.fromEntries(req.headers),
-		});
+
+		const analyticsData: AnalyticsData = {
+			shortCode: new URL(req.url).pathname.slice(1),
+			timestamp: new Date().toISOString(),
+			country: req.cf?.country,
+			continent: req.cf?.continent,
+			region: req.cf?.region,
+			city: req.cf?.city,
+			asn: req.cf?.asn,
+			asOrganization: req.cf?.asOrganization,
+			colo: req.cf?.colo,
+			userAgent: req.headers.get('user-agent'),
+			language: req.headers.get('accept-language')?.split(',')[0],
+			referer: req.headers.get('referer'),
+			botScore: req.cf?.botManagement?.score,
+			isBot: req.cf?.botManagement?.verifiedBot || false,
+			ipAddress: req.headers.get('cf-connecting-ip'),
+			httpProtocol: req.cf?.httpProtocol,
+		};
+
+		await env.shortener_analytics.send(analyticsData);
 		return new Response(null, {
 			status: 302,
 			headers: {
