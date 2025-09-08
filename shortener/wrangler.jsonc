@@ -16,4 +16,17 @@
 			},
 		],
 	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "shortener-db",
+			"database_id": "placeholder-id"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "placeholder-id"
+		}
+	]
 }

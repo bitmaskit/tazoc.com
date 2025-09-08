@@ -4,6 +4,8 @@
 declare namespace Cloudflare {
 	interface Env {
 		shortener_analytics: Queue;
+		DB: D1Database;
+		KV: KVNamespace;
 	}
 }
 interface Env extends Cloudflare.Env {}
