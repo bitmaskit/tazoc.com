@@ -7,9 +7,19 @@ const mockAnalyticsEngine = {
   writeDataPoint: vi.fn(),
 };
 
+// Mock D1 Database
+const mockD1 = {
+  prepare: vi.fn().mockReturnValue({
+    bind: vi.fn().mockReturnValue({
+      run: vi.fn().mockResolvedValue({ success: true })
+    })
+  })
+};
+
 // Mock environment
 const mockEnv = {
   ANALYTICS_ENGINE: mockAnalyticsEngine,
+  URL_DB: mockD1,
 } as any;
 
 describe('Queue Processor', () => {
@@ -35,8 +45,10 @@ describe('Queue Processor', () => {
           body: analyticsData,
           id: 'msg-1',
           timestamp: new Date(),
+          attempts: 1,
         },
       ],
+      queue: 'test-queue'
     } as MessageBatch<AnalyticsData>;
 
     await worker.queue(mockBatch, mockEnv);
@@ -78,11 +90,14 @@ describe('Queue Processor', () => {
           body: invalidData,
           id: 'msg-1',
           timestamp: new Date(),
+          attempts: 1,
         },
       ],
+      queue: 'test-queue'
     } as MessageBatch<AnalyticsData>;
 
-    await worker.queue(mockBatch, mockEnv);
+    // Should throw error when all messages fail (for queue retry)
+    await expect(worker.queue(mockBatch, mockEnv)).rejects.toThrow('All 1 messages failed processing');
 
     // Should not write any data points for invalid data
     expect(mockAnalyticsEngine.writeDataPoint).not.toHaveBeenCalled();
@@ -104,13 +119,44 @@ describe('Queue Processor', () => {
 
     const mockBatch = {
       messages: [
-        { body: analyticsData1, id: 'msg-1', timestamp: new Date() },
-        { body: analyticsData2, id: 'msg-2', timestamp: new Date() },
+        { body: analyticsData1, id: 'msg-1', timestamp: new Date(), attempts: 1 },
+        { body: analyticsData2, id: 'msg-2', timestamp: new Date(), attempts: 1 },
       ],
+      queue: 'test-queue'
     } as MessageBatch<AnalyticsData>;
 
     await worker.queue(mockBatch, mockEnv);
 
     expect(mockAnalyticsEngine.writeDataPoint).toHaveBeenCalledTimes(2);
+  });
+
+  it('should send messages to dead letter queue after too many attempts', async () => {
+    const invalidData = {
+      // Missing required shortCode
+      timestamp: '2023-01-01T00:00:00.000Z',
+      isBot: false,
+    } as AnalyticsData;
+
+    const mockBatch = {
+      messages: [
+        {
+          body: invalidData,
+          id: 'msg-1',
+          timestamp: new Date(),
+          attempts: 15, // Exceeds DEAD_LETTER_THRESHOLD (10)
+        },
+      ],
+      queue: 'test-queue'
+    } as MessageBatch<AnalyticsData>;
+
+    await worker.queue(mockBatch, mockEnv);
+
+    // Should have attempted to insert into dead letter queue
+    expect(mockD1.prepare).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO dead_letter_queue')
+    );
+    
+    // Should not write any data points for invalid data
+    expect(mockAnalyticsEngine.writeDataPoint).not.toHaveBeenCalled();
   });
 });
