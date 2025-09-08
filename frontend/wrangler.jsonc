@@ -1,0 +1,61 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frontend",
+  "compatibility_date": "2025-09-06",
+  "main": "server/index.ts",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist/client/",
+    "not_found_handling": "single-page-application",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  /**
+   * Smart Placement
+   * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+   */
+  "placement": { "mode": "smart" },
+  /**
+   * Bindings
+   * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+   * databases, object storage, AI inference, real-time communication and more.
+   * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+   */
+  /**
+   * Environment Variables
+   * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+   */
+  "secrets_store_secrets": [
+    {
+      "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
+      "secret_name": "GITHUB_CLIENT_ID",
+      "binding": "GITHUB_CLIENT_ID",
+    },
+    {
+      "binding": "GITHUB_CLIENT_SECRET",
+      "secret_name": "GITHUB_CLIENT_SECRET",
+      "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
+    },
+  ],
+  "vars": {
+    "CALLBACK_URL": "https://localhost:5174/api/auth/callback",
+  },
+  /**
+   * Note: Use secrets to store sensitive data.
+   * https://developers.cloudflare.com/workers/configuration/secrets/
+   */
+  /**
+   * Static Assets
+   * https://developers.cloudflare.com/workers/static-assets/binding/
+   */
+  /**
+   * Service Bindings (communicate between multiple Workers)
+   * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
+   */
+  "services": [{ "binding": "SHORTENER", "service": "shortener" }],
+}
