@@ -1,6 +1,19 @@
 import type { AnalyticsData } from '@/types/analytics-data';
 import { createLogger, MetricsCollector, HealthChecker, type LogContext } from '../../shared/logging';
 
+// Cache metrics interface
+interface CacheMetrics {
+	hits: number;
+	misses: number;
+	writes: number;
+	invalidates: number;
+	errors: number;
+	totalRequests: number;
+	avgTTL: number;
+	ttlSum: number;
+	ttlCount: number;
+}
+
 // Circuit breaker state for D1 database
 interface CircuitBreakerState {
 	failures: number;
@@ -40,12 +53,12 @@ healthChecker.addCheck('circuit_breaker', async () => {
 			}
 		};
 	}
-	return { name: 'circuit_breaker', status: 'healthy', message: 'Circuit breaker is healthy', lastCheck: new Date().toISOString() };
+	return { name: 'circuit_breaker', status: 'ok', message: 'Circuit breaker is healthy', lastCheck: new Date().toISOString() };
 });
 
 healthChecker.addCheck('memory', async () => {
 	// Basic memory check - in a real environment you'd have more sophisticated monitoring
-	return { name: 'memory', status: 'healthy', message: 'Memory usage within limits', lastCheck: new Date().toISOString() };
+	return { name: 'memory', status: 'ok', message: 'Memory usage within limits', lastCheck: new Date().toISOString() };
 });
 
 // Circuit breaker implementation for D1 calls
@@ -111,7 +124,7 @@ async function callWithCircuitBreaker<T>(
 // Resilient KV get with fallback and metrics tracking
 async function getFromKVWithFallback(env: Env, shortCode: string): Promise<{url: string | null, clickCount?: number}> {
 	try {
-		const result = await env.URL_CACHE.get(`link:${shortCode}`, 'json');
+		const result = await env.URL_CACHE.get(`link:${shortCode}`, 'json') as { originalUrl: string; clickCount?: number } | null;
 		if (result && result.originalUrl) {
 			await storeCacheMetrics(env.URL_CACHE, shortCode, 'hit');
 			logger.info('KV cache hit', { shortCode });
@@ -213,12 +226,12 @@ async function storeCacheMetrics(
 		const hour = timestamp.substring(0, 13);
 		const metricKey = `metrics:cache:${hour}`;
 		
-		const existingMetrics = await kv.get(metricKey, 'json') || {
+		const existingMetrics = (await kv.get(metricKey, 'json') as CacheMetrics | null) || {
 			hits: 0, misses: 0, writes: 0, invalidates: 0, errors: 0,
 			totalRequests: 0, avgTTL: 0, ttlSum: 0, ttlCount: 0
 		};
 		
-		existingMetrics[operation + 's']++;
+		(existingMetrics as any)[operation + 's']++;
 		existingMetrics.totalRequests++;
 		
 		if (operation === 'write' && ttl) {
@@ -413,18 +426,18 @@ function processAnalyticsAsync(
 					// Required fields
 					shortCode: shortCode,
 					timestamp: new Date().toISOString(),
-					isBot: req.cf?.botManagement?.verifiedBot || false,
+					isBot: (req.cf as any)?.botManagement?.verifiedBot || false,
 					
 					// Geographic data from Cloudflare
-					country: req.cf?.country,
-					continent: req.cf?.continent,
-					region: req.cf?.region,
-					city: req.cf?.city,
+					country: (req.cf as any)?.country,
+					continent: (req.cf as any)?.continent,
+					region: (req.cf as any)?.region,
+					city: (req.cf as any)?.city,
 					
 					// Network information
-					asn: req.cf?.asn,
-					asOrganization: req.cf?.asOrganization,
-					colo: req.cf?.colo,
+					asn: (req.cf as any)?.asn,
+					asOrganization: (req.cf as any)?.asOrganization,
+					colo: (req.cf as any)?.colo,
 					
 					// User agent and device info
 					userAgent: req.headers.get('user-agent'),
@@ -432,11 +445,11 @@ function processAnalyticsAsync(
 					referer: req.headers.get('referer'),
 					
 					// Bot detection and quality scores
-					botScore: req.cf?.botManagement?.score,
+					botScore: (req.cf as any)?.botManagement?.score,
 					
 					// Request metadata
 					ipAddress: req.headers.get('cf-connecting-ip'),
-					httpProtocol: req.cf?.httpProtocol,
+					httpProtocol: (req.cf as any)?.httpProtocol,
 				};
 
 				await env.shortener_analytics.send(analyticsData);

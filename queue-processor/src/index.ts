@@ -1,6 +1,18 @@
 import type { AnalyticsData } from '@/types/analytics-data';
 import { createLogger, MetricsCollector, HealthChecker } from '../../shared/logging';
 
+interface QueueMetrics {
+	totalBatches: number;
+	totalMessages: number;
+	totalProcessingTime: number;
+	totalSuccesses: number;
+	totalErrors: number;
+	totalDeadLetters: number;
+	avgBatchSize: number;
+	avgProcessingTime: number;
+	successRate: number;
+}
+
 // Enhanced retry configuration
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
@@ -19,11 +31,11 @@ const healthChecker = new HealthChecker('queue-processor');
 
 // Initialize health checks
 healthChecker.addCheck('database', async () => {
-	return { name: 'database', status: 'healthy', message: 'Database connection healthy', lastCheck: new Date().toISOString() };
+	return { name: 'database', status: 'ok', message: 'Database connection healthy', lastCheck: new Date().toISOString() };
 });
 
 healthChecker.addCheck('queue', async () => {
-	return { name: 'queue', status: 'healthy', message: 'Queue processing healthy', lastCheck: new Date().toISOString() };
+	return { name: 'queue', status: 'ok', message: 'Queue processing healthy', lastCheck: new Date().toISOString() };
 });
 
 // Enhanced exponential backoff with jitter and max delay
@@ -320,7 +332,7 @@ async function recordMetrics(metrics: ProcessingMetrics, env: Env) {
 		const metricKey = `metrics:queue:${hour}`;
 		
 		// Get existing metrics for this hour
-		const existingMetrics = await env.URL_CACHE?.get(metricKey, 'json') || {
+		const existingMetrics = (await env.URL_CACHE?.get(metricKey, 'json') as QueueMetrics | null) || {
 			totalBatches: 0,
 			totalMessages: 0,
 			totalProcessingTime: 0,
@@ -517,7 +529,7 @@ export default {
 					const metricKey = `metrics:queue:${hour}`;
 					
 					try {
-						const hourMetrics = await env.URL_CACHE?.get(metricKey, 'json');
+						const hourMetrics = await env.URL_CACHE?.get(metricKey, 'json') as QueueMetrics | null;
 						if (hourMetrics) {
 							totalMetrics.totalBatches += hourMetrics.totalBatches || 0;
 							totalMetrics.totalMessages += hourMetrics.totalMessages || 0;

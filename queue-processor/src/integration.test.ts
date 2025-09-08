@@ -57,7 +57,9 @@ describe('Queue Processor Integration Tests', () => {
             attempts: 1,
           },
         ],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       await worker.queue(mockBatch, mockEnv);
@@ -108,7 +110,9 @@ describe('Queue Processor Integration Tests', () => {
           { body: validData, id: 'msg-1', timestamp: new Date(), attempts: 1 },
           { body: invalidData, id: 'msg-2', timestamp: new Date(), attempts: 1 },
         ],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       try {
@@ -142,7 +146,9 @@ describe('Queue Processor Integration Tests', () => {
             attempts: 3, // Simulate retry attempts
           },
         ],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       try {
@@ -171,7 +177,9 @@ describe('Queue Processor Integration Tests', () => {
             attempts: 15, // Exceeds DEAD_LETTER_THRESHOLD (10)
           },
         ],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       await worker.queue(mockBatch, mockEnv);
@@ -205,7 +213,9 @@ describe('Queue Processor Integration Tests', () => {
 
       const mockBatch = {
         messages,
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       await worker.queue(mockBatch, mockEnv);
@@ -230,8 +240,12 @@ describe('Queue Processor Integration Tests', () => {
           id: `msg-${i}`,
           timestamp: new Date(),
           attempts: 1,
+          retry: vi.fn(),
+          ack: vi.fn(),
         }],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       })) as MessageBatch<AnalyticsData>[];
 
       // Process batches concurrently
@@ -269,8 +283,12 @@ describe('Queue Processor Integration Tests', () => {
           id: 'msg-1',
           timestamp: new Date(),
           attempts: 1,
+          retry: vi.fn(),
+          ack: vi.fn(),
         }],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       await worker.queue(mockBatch, mockEnv);
@@ -312,8 +330,12 @@ describe('Queue Processor Integration Tests', () => {
           id: 'msg-1',
           timestamp: new Date(),
           attempts: 1,
+          retry: vi.fn(),
+          ack: vi.fn(),
         }],
-        queue: 'test-queue'
+        queue: 'test-queue',
+        retryAll: vi.fn(),
+        ackAll: vi.fn(),
       } as MessageBatch<AnalyticsData>;
 
       await worker.queue(mockBatch, mockEnv);

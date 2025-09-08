@@ -46,9 +46,13 @@ describe('Queue Processor', () => {
           id: 'msg-1',
           timestamp: new Date(),
           attempts: 1,
+          retry: vi.fn(),
+          ack: vi.fn(),
         },
       ],
-      queue: 'test-queue'
+      queue: 'test-queue',
+      retryAll: vi.fn(),
+      ackAll: vi.fn(),
     } as MessageBatch<AnalyticsData>;
 
     await worker.queue(mockBatch, mockEnv);
@@ -91,9 +95,13 @@ describe('Queue Processor', () => {
           id: 'msg-1',
           timestamp: new Date(),
           attempts: 1,
+          retry: vi.fn(),
+          ack: vi.fn(),
         },
       ],
-      queue: 'test-queue'
+      queue: 'test-queue',
+      retryAll: vi.fn(),
+      ackAll: vi.fn(),
     } as MessageBatch<AnalyticsData>;
 
     // Should throw error when all messages fail (for queue retry)
@@ -122,7 +130,9 @@ describe('Queue Processor', () => {
         { body: analyticsData1, id: 'msg-1', timestamp: new Date(), attempts: 1 },
         { body: analyticsData2, id: 'msg-2', timestamp: new Date(), attempts: 1 },
       ],
-      queue: 'test-queue'
+      queue: 'test-queue',
+      retryAll: vi.fn(),
+      ackAll: vi.fn(),
     } as MessageBatch<AnalyticsData>;
 
     await worker.queue(mockBatch, mockEnv);
@@ -146,7 +156,9 @@ describe('Queue Processor', () => {
           attempts: 15, // Exceeds DEAD_LETTER_THRESHOLD (10)
         },
       ],
-      queue: 'test-queue'
+      queue: 'test-queue',
+      retryAll: vi.fn(),
+      ackAll: vi.fn(),
     } as MessageBatch<AnalyticsData>;
 
     await worker.queue(mockBatch, mockEnv);

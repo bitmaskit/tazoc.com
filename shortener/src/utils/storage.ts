@@ -19,6 +19,26 @@ export interface StorageEnv {
   KV: KVNamespace;
 }
 
+interface CachedLinkData {
+  originalUrl: string;
+  isActive: boolean;
+  expiresAt?: string;
+  clickCount?: number;
+  cachedAt: string;
+}
+
+interface CacheMetrics {
+  hits: number;
+  misses: number;
+  writes: number;
+  invalidates: number;
+  errors: number;
+  totalRequests: number;
+  avgTTL: number;
+  ttlSum: number;
+  ttlCount: number;
+}
+
 /**
  * Store URL mapping in D1 database
  * @param linkData - The link data to store
@@ -178,7 +198,7 @@ async function warmCacheForNewLink(shortCode: string, linkData: LinkData, kv: KV
  */
 export async function getFromCache(shortCode: string, kv: KVNamespace): Promise<LinkData | null> {
   try {
-    const cached = await kv.get(`link:${shortCode}`, 'json');
+    const cached = await kv.get(`link:${shortCode}`, 'json') as CachedLinkData | null;
     if (!cached) {
       await storeCacheMetrics(kv, shortCode, 'miss');
       return null;
@@ -264,7 +284,7 @@ export async function deleteUrlMapping(shortCode: string, env: StorageEnv): Prom
 
   const result = await env.DB.prepare(query)
     .bind(shortCode)
-    .run();
+    .run() as D1Result & { changes: number };
 
   const wasDeleted = result.changes > 0;
 
@@ -406,7 +426,7 @@ export async function deleteUserLink(
 
   const result = await env.DB.prepare(query)
     .bind(shortCode, userId)
-    .run();
+    .run() as D1Result & { changes: number };
 
   const wasDeleted = result.changes > 0;
 
@@ -438,7 +458,7 @@ async function storeCacheMetrics(
     const metricKey = `metrics:cache:${hour}`;
     
     // Get existing metrics for this hour
-    const existingMetrics = await kv.get(metricKey, 'json') || {
+    const existingMetrics = (await kv.get(metricKey, 'json') as CacheMetrics | null) || {
       hits: 0,
       misses: 0,
       writes: 0,
@@ -451,7 +471,7 @@ async function storeCacheMetrics(
     };
     
     // Update metrics
-    existingMetrics[operation + 's']++;
+    (existingMetrics as any)[operation + 's']++;
     existingMetrics.totalRequests++;
     
     if (operation === 'write' && ttl) {
@@ -505,7 +525,7 @@ export async function getCacheMetrics(
     const metricKey = `metrics:cache:${hour}`;
     
     try {
-      const metrics = await kv.get(metricKey, 'json');
+      const metrics = await kv.get(metricKey, 'json') as CacheMetrics | null;
       if (metrics) {
         totalHits += metrics.hits || 0;
         totalMisses += metrics.misses || 0;

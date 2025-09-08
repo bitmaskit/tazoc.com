@@ -48,12 +48,12 @@ const healthChecker = new HealthChecker('shortener');
 // Initialize health checks
 healthChecker.addCheck('database', async () => {
   // This would be implemented with actual database connectivity check
-  return { name: 'database', status: 'healthy', message: 'Database connection healthy', lastCheck: new Date().toISOString() };
+  return { name: 'database', status: 'ok', message: 'Database connection healthy', lastCheck: new Date().toISOString() };
 });
 
 healthChecker.addCheck('cache', async () => {
   // This would be implemented with actual cache connectivity check
-  return { name: 'cache', status: 'healthy', message: 'Cache connection healthy', lastCheck: new Date().toISOString() };
+  return { name: 'cache', status: 'ok', message: 'Cache connection healthy', lastCheck: new Date().toISOString() };
 });
 
 /**

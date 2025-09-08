@@ -27,8 +27,8 @@ import worker from './index';
 
 // Mock environment
 const mockEnv = {
-  DB: {} as D1Database,
-  KV: {} as KVNamespace,
+  URL_CACHE: {} as KVNamespace,
+  URL_DB: {} as D1Database,
   shortener_analytics: {} as Queue
 } as Env;
 

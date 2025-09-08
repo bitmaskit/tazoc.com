@@ -27,6 +27,7 @@ const mockStatement = {
 const mockCtx = {
   waitUntil: vi.fn(),
   passThroughOnException: vi.fn(),
+  props: {}
 } as ExecutionContext;
 
 describe('Resolver Worker', () => {
