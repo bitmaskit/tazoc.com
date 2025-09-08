@@ -29,26 +29,56 @@ export default {
 			return new Response(`Not found: ${shortCode}`, { status: 404 });
 		}
 
+		// Capture comprehensive analytics data
 		const analyticsData: AnalyticsData = {
-			shortCode: new URL(req.url).pathname.slice(1),
+			// Required fields
+			shortCode: shortCode,
 			timestamp: new Date().toISOString(),
+			isBot: req.cf?.botManagement?.verifiedBot || false,
+			
+			// Geographic data from Cloudflare
 			country: req.cf?.country,
 			continent: req.cf?.continent,
 			region: req.cf?.region,
 			city: req.cf?.city,
+			
+			// Network information
 			asn: req.cf?.asn,
 			asOrganization: req.cf?.asOrganization,
 			colo: req.cf?.colo,
+			
+			// User agent and device info
 			userAgent: req.headers.get('user-agent'),
-			language: req.headers.get('accept-language')?.split(',')[0],
+			language: req.headers.get('accept-language')?.split(',')[0]?.trim(),
 			referer: req.headers.get('referer'),
+			
+			// Bot detection and quality scores
 			botScore: req.cf?.botManagement?.score,
-			isBot: req.cf?.botManagement?.verifiedBot || false,
+			
+			// Request metadata
 			ipAddress: req.headers.get('cf-connecting-ip'),
 			httpProtocol: req.cf?.httpProtocol,
 		};
 
-		await env.shortener_analytics.send(analyticsData);
+		// Send analytics data to queue using fire-and-forget pattern
+		// This ensures redirects are not blocked by analytics processing
+		ctx.waitUntil(
+			(async () => {
+				try {
+					await env.shortener_analytics.send(analyticsData);
+					console.log(`Analytics queued for shortCode: ${shortCode}`);
+				} catch (error) {
+					// Log error but don't fail the redirect
+					console.error('Failed to queue analytics data:', error, {
+						shortCode,
+						timestamp: analyticsData.timestamp
+					});
+					
+					// Could implement fallback storage here if needed
+					// For now, we prioritize redirect performance over analytics completeness
+				}
+			})()
+		);
 		return new Response(null, {
 			status: 302,
 			headers: {
