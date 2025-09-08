@@ -93,22 +93,24 @@ describe('storage utilities', () => {
   });
 
   describe('cacheInKV', () => {
-    it('should cache link data with default TTL', async () => {
+    it('should cache link data with intelligent TTL', async () => {
       (mockKv.put as any).mockResolvedValue(undefined);
+      (mockKv.get as any).mockResolvedValue(null); // No existing metrics
 
       await cacheInKV('abc123', sampleLinkData, mockKv);
 
       expect(mockKv.put).toHaveBeenCalledWith(
         'link:abc123',
         expect.stringContaining('"originalUrl":"https://example.com"'),
-        { expirationTtl: 86400 }
+        { expirationTtl: 43200 } // 12 hours for unused links (clickCount: 0)
       );
     });
 
     it('should cache link data with custom TTL', async () => {
       (mockKv.put as any).mockResolvedValue(undefined);
+      (mockKv.get as any).mockResolvedValue(null); // No existing metrics
 
-      await cacheInKV('abc123', sampleLinkData, mockKv, 3600);
+      await cacheInKV('abc123', sampleLinkData, mockKv, false, 3600);
 
       expect(mockKv.put).toHaveBeenCalledWith(
         'link:abc123',
@@ -156,9 +158,10 @@ describe('storage utilities', () => {
         originalUrl: 'https://example.com',
         isActive: true,
         expiresAt: null,
+        clickCount: 0,
         cachedAt: '2024-01-01T00:00:00Z'
       };
-      (mockKv.get as any).mockResolvedValue(cachedData);
+      (mockKv.get as any).mockResolvedValueOnce(cachedData).mockResolvedValueOnce(null); // Cache data, then no metrics
 
       const result = await getFromCache('abc123', mockKv);
 
@@ -167,6 +170,7 @@ describe('storage utilities', () => {
         originalUrl: 'https://example.com',
         isActive: true,
         expiresAt: null,
+        clickCount: 0,
         createdAt: '2024-01-01T00:00:00Z'
       });
       expect(mockKv.get).toHaveBeenCalledWith('link:abc123', 'json');
@@ -217,14 +221,18 @@ describe('storage utilities', () => {
         originalUrl: 'https://example.com',
         isActive: true,
         expiresAt: null,
+        clickCount: 0,
         createdAt: '2024-01-01T00:00:00Z'
       };
-      (mockKv.get as any).mockResolvedValue({
-        originalUrl: 'https://example.com',
-        isActive: true,
-        expiresAt: null,
-        cachedAt: '2024-01-01T00:00:00Z'
-      });
+      (mockKv.get as any)
+        .mockResolvedValueOnce({
+          originalUrl: 'https://example.com',
+          isActive: true,
+          expiresAt: null,
+          clickCount: 0,
+          cachedAt: '2024-01-01T00:00:00Z'
+        })
+        .mockResolvedValueOnce(null); // No existing metrics
 
       const result = await getUrlMapping('abc123', mockEnv);
 

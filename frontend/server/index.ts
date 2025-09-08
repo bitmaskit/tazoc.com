@@ -238,6 +238,117 @@ async function handleGetAnalytics(shortCode: string, request: Request, env: Env)
 }
 
 /**
+ * Handle GET /api/system/status endpoint - system monitoring dashboard
+ */
+async function handleSystemStatus(request: Request, env: Env): Promise<Response> {
+  try {
+    const services = ['shortener', 'resolver', 'queue-processor'];
+    const serviceStatus: Record<string, any> = {};
+    
+    // Helper function to get service URLs (in production, these would be actual service URLs)
+    function getServiceUrl(service: string): string {
+      const serviceUrls: Record<string, string> = {
+        'shortener': 'http://localhost:8787', // Wrangler dev server
+        'resolver': 'http://localhost:8788',
+        'queue-processor': 'http://localhost:8789'
+      };
+      return serviceUrls[service] || 'http://localhost:8787';
+    }
+    
+    // Check each service health
+    for (const service of services) {
+      try {
+        const healthUrl = getServiceUrl(service) + '/health';
+        const response = await fetch(healthUrl, { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        
+        if (response.ok) {
+          serviceStatus[service] = await response.json();
+        } else {
+          serviceStatus[service] = {
+            status: 'unhealthy',
+            service,
+            timestamp: new Date().toISOString(),
+            error: `HTTP ${response.status}`
+          };
+        }
+      } catch (error) {
+        serviceStatus[service] = {
+          status: 'unhealthy',
+          service,
+          timestamp: new Date().toISOString(),
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+
+    // Get cache metrics from shortener
+    let cacheMetrics = null;
+    try {
+      const cacheResponse = await fetch(getServiceUrl('shortener') + '/metrics/cache', {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (cacheResponse.ok) {
+        cacheMetrics = await cacheResponse.json();
+      }
+    } catch (error) {
+      console.warn('Failed to fetch cache metrics:', error);
+    }
+
+    // Get queue metrics from queue processor
+    let queueMetrics = null;
+    try {
+      const queueResponse = await fetch(getServiceUrl('queue-processor') + '/metrics', {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (queueResponse.ok) {
+        queueMetrics = await queueResponse.json();
+      }
+    } catch (error) {
+      console.warn('Failed to fetch queue metrics:', error);
+    }
+
+    // Determine overall system status
+    const healthyServices = Object.values(serviceStatus).filter(s => s.status === 'healthy').length;
+    const totalServices = services.length;
+    
+    let overallStatus = 'healthy';
+    if (healthyServices === 0) {
+      overallStatus = 'unhealthy';
+    } else if (healthyServices < totalServices) {
+      overallStatus = 'degraded';
+    }
+
+    const systemStatus = {
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      services: serviceStatus,
+      metrics: {
+        cache: cacheMetrics,
+        queue: queueMetrics
+      },
+      summary: {
+        totalServices,
+        healthyServices,
+        degradedServices: totalServices - healthyServices
+      }
+    };
+
+    return new Response(JSON.stringify(systemStatus), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('System status error:', error);
+    return createErrorResponse('INTERNAL_ERROR', 'Failed to get system status', 500);
+  }
+}
+
+/**
  * Handle authentication endpoints
  */
 async function handleAuth(request: Request, pathname: string): Promise<Response> {
@@ -297,6 +408,8 @@ export default {
       } else if (pathname.startsWith('/api/links/') && pathname.includes('/analytics') && method === 'GET') {
         const shortCode = pathname.split('/')[3]; // /api/links/:shortCode/analytics
         response = await handleGetAnalytics(shortCode, request, env);
+      } else if (pathname === '/api/system/status' && method === 'GET') {
+        response = await handleSystemStatus(request, env);
       } else if (pathname.startsWith('/api/links/') && method === 'GET') {
         const shortCode = pathname.split('/')[3]; // /api/links/:shortCode
         response = await handleGetLink(shortCode, request, env);

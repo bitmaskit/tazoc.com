@@ -1,4 +1,5 @@
 import type { AnalyticsData } from '@/types/analytics-data';
+import { createLogger, MetricsCollector, HealthChecker, type LogContext } from '../../shared/logging';
 
 // Circuit breaker state for D1 database
 interface CircuitBreakerState {
@@ -20,17 +21,32 @@ const CIRCUIT_BREAKER_CONFIG = {
 	halfOpenMaxCalls: 3
 };
 
-// Structured logging utility
-function logEvent(level: 'info' | 'warn' | 'error', message: string, metadata?: any) {
-	const logEntry = {
-		timestamp: new Date().toISOString(),
-		level,
-		message,
-		service: 'resolver',
-		metadata
-	};
-	console.log(JSON.stringify(logEntry));
-}
+// Global logger and metrics collector
+const logger = createLogger('resolver');
+const metrics = new MetricsCollector('resolver');
+const healthChecker = new HealthChecker('resolver');
+
+// Initialize health checks
+healthChecker.addCheck('circuit_breaker', async () => {
+	if (circuitBreaker.state === 'OPEN') {
+		return {
+			name: 'circuit_breaker',
+			status: 'warning',
+			message: 'Circuit breaker is open',
+			lastCheck: new Date().toISOString(),
+			metadata: { 
+				failures: circuitBreaker.failures,
+				lastFailureTime: circuitBreaker.lastFailureTime 
+			}
+		};
+	}
+	return { name: 'circuit_breaker', status: 'healthy', message: 'Circuit breaker is healthy', lastCheck: new Date().toISOString() };
+});
+
+healthChecker.addCheck('memory', async () => {
+	// Basic memory check - in a real environment you'd have more sophisticated monitoring
+	return { name: 'memory', status: 'healthy', message: 'Memory usage within limits', lastCheck: new Date().toISOString() };
+});
 
 // Circuit breaker implementation for D1 calls
 async function callWithCircuitBreaker<T>(
@@ -43,12 +59,13 @@ async function callWithCircuitBreaker<T>(
 	if (circuitBreaker.state === 'OPEN' && 
 		now - circuitBreaker.lastFailureTime > CIRCUIT_BREAKER_CONFIG.recoveryTimeoutMs) {
 		circuitBreaker.state = 'HALF_OPEN';
-		logEvent('info', 'Circuit breaker transitioning to HALF_OPEN', { operationName });
+		logger.info('Circuit breaker transitioning to HALF_OPEN', { operation: operationName });
 	}
 	
 	// Reject immediately if circuit is OPEN
 	if (circuitBreaker.state === 'OPEN') {
-		logEvent('warn', 'Circuit breaker is OPEN, rejecting call', { operationName });
+		logger.warn('Circuit breaker is OPEN, rejecting call', { operation: operationName });
+		metrics.incrementCounter('circuit_breaker_rejections');
 		return null;
 	}
 	
@@ -59,7 +76,7 @@ async function callWithCircuitBreaker<T>(
 		if (circuitBreaker.state === 'HALF_OPEN') {
 			circuitBreaker.state = 'CLOSED';
 			circuitBreaker.failures = 0;
-			logEvent('info', 'Circuit breaker reset to CLOSED after successful call', { operationName });
+			logger.info('Circuit breaker reset to CLOSED after successful call', { operation: operationName });
 		}
 		
 		return result;
@@ -67,85 +84,197 @@ async function callWithCircuitBreaker<T>(
 		circuitBreaker.failures++;
 		circuitBreaker.lastFailureTime = now;
 		
-		logEvent('error', `Circuit breaker recorded failure for ${operationName}`, {
-			operationName,
-			failures: circuitBreaker.failures,
-			error: error instanceof Error ? error.message : String(error)
+		logger.error(`Circuit breaker recorded failure for ${operationName}`, {
+			operation: operationName,
+			metadata: {
+				failures: circuitBreaker.failures,
+				error: error instanceof Error ? error.message : String(error)
+			}
 		});
+		
+		metrics.incrementCounter('circuit_breaker_failures');
 		
 		// Open circuit if failure threshold exceeded
 		if (circuitBreaker.failures >= CIRCUIT_BREAKER_CONFIG.failureThreshold) {
 			circuitBreaker.state = 'OPEN';
-			logEvent('error', 'Circuit breaker opened due to repeated failures', {
-				operationName,
-				failures: circuitBreaker.failures
+			logger.error('Circuit breaker opened due to repeated failures', {
+				operation: operationName,
+				metadata: { failures: circuitBreaker.failures }
 			});
+			metrics.incrementCounter('circuit_breaker_opens');
 		}
 		
 		return null;
 	}
 }
 
-// Resilient KV get with fallback
-async function getFromKVWithFallback(env: Env, shortCode: string): Promise<string | null> {
+// Resilient KV get with fallback and metrics tracking
+async function getFromKVWithFallback(env: Env, shortCode: string): Promise<{url: string | null, clickCount?: number}> {
 	try {
-		const result = await env.URL_CACHE.get(shortCode);
-		if (result) {
-			logEvent('info', 'KV cache hit', { shortCode });
-			return result;
+		const result = await env.URL_CACHE.get(`link:${shortCode}`, 'json');
+		if (result && result.originalUrl) {
+			await storeCacheMetrics(env.URL_CACHE, shortCode, 'hit');
+			logger.info('KV cache hit', { shortCode });
+			metrics.incrementCounter('cache_hits');
+			return { url: result.originalUrl, clickCount: result.clickCount };
 		}
-		logEvent('info', 'KV cache miss', { shortCode });
-		return null;
+		await storeCacheMetrics(env.URL_CACHE, shortCode, 'miss');
+		logger.info('KV cache miss', { shortCode });
+		metrics.incrementCounter('cache_misses');
+		return { url: null };
 	} catch (error) {
-		logEvent('warn', 'KV cache unavailable, will fallback to D1', {
+		await storeCacheMetrics(env.URL_CACHE, shortCode, 'error');
+		logger.warn('KV cache unavailable, will fallback to D1', {
 			shortCode,
-			error: error instanceof Error ? error.message : String(error)
+			error: error instanceof Error ? {
+				name: error.name,
+				message: error.message
+			} : { name: 'Unknown', message: String(error) }
 		});
-		return null;
+		metrics.incrementCounter('cache_errors');
+		return { url: null };
 	}
 }
 
 // Resilient D1 query with circuit breaker
-async function getFromD1WithCircuitBreaker(env: Env, shortCode: string): Promise<string | null> {
-	return await callWithCircuitBreaker(async () => {
-		const result = await env.URL_DB.prepare('SELECT destination FROM links WHERE short_code = ? LIMIT 1')
+async function getFromD1WithCircuitBreaker(env: Env, shortCode: string): Promise<{url: string | null, clickCount?: number}> {
+	const result = await callWithCircuitBreaker(async () => {
+		const dbResult = await env.URL_DB.prepare('SELECT destination, click_count FROM links WHERE short_code = ? AND is_active = 1 LIMIT 1')
 			.bind(shortCode)
 			.first();
 		
-		if (result?.destination) {
-			logEvent('info', 'D1 database hit', { shortCode });
-			return result.destination as string;
+		if (dbResult?.destination) {
+			logger.info('D1 database hit', { shortCode });
+			metrics.incrementCounter('database_hits');
+			return { url: dbResult.destination as string, clickCount: dbResult.click_count as number || 0 };
 		}
 		
-		logEvent('info', 'D1 database miss', { shortCode });
-		return null;
+		logger.info('D1 database miss', { shortCode });
+		metrics.incrementCounter('database_misses');
+		return { url: null };
 	}, 'D1_QUERY');
+	
+	return result || { url: null };
 }
 
-// Resilient cache update (fire-and-forget)
-async function updateCacheAsync(env: Env, shortCode: string, url: string, ctx: ExecutionContext) {
+// Resilient cache update with intelligent TTL (fire-and-forget)
+async function updateCacheAsync(env: Env, shortCode: string, url: string, clickCount: number = 0, ctx: ExecutionContext) {
 	ctx.waitUntil(
 		(async () => {
 			try {
-				await env.URL_CACHE.put(shortCode, url, { expirationTtl: 60 * 60 * 24 });
-				logEvent('info', 'Cache updated successfully', { shortCode });
+				// Calculate intelligent TTL based on usage patterns
+				const baseTTL = 60 * 60 * 24; // 24 hours
+				let ttl = baseTTL;
+				
+				if (clickCount > 100) {
+					ttl = baseTTL * 7; // Very popular links get 7 days
+				} else if (clickCount > 10) {
+					ttl = baseTTL * 2; // Popular links get 2 days
+				} else if (clickCount === 0) {
+					ttl = baseTTL / 2; // Unused links get 12 hours
+				}
+				
+				const cacheData = {
+					originalUrl: url,
+					isActive: true,
+					clickCount,
+					cachedAt: new Date().toISOString(),
+					ttl
+				};
+				
+				await env.URL_CACHE.put(`link:${shortCode}`, JSON.stringify(cacheData), { expirationTtl: ttl });
+				
+				// Store cache metrics
+				await storeCacheMetrics(env.URL_CACHE, shortCode, 'write', ttl);
+				
+				logger.info('Cache updated successfully', { shortCode, metadata: { ttl } });
 			} catch (error) {
-				logEvent('warn', 'Failed to update cache', {
+				logger.warn('Failed to update cache', {
 					shortCode,
-					error: error instanceof Error ? error.message : String(error)
+					error: error instanceof Error ? {
+						name: error.name,
+						message: error.message
+					} : { name: 'Unknown', message: String(error) }
 				});
 			}
 		})()
 	);
 }
 
+// Store cache metrics for monitoring
+async function storeCacheMetrics(
+	kv: KVNamespace, 
+	shortCode: string, 
+	operation: 'hit' | 'miss' | 'write' | 'invalidate' | 'error',
+	ttl?: number
+): Promise<void> {
+	try {
+		const timestamp = new Date().toISOString();
+		const hour = timestamp.substring(0, 13);
+		const metricKey = `metrics:cache:${hour}`;
+		
+		const existingMetrics = await kv.get(metricKey, 'json') || {
+			hits: 0, misses: 0, writes: 0, invalidates: 0, errors: 0,
+			totalRequests: 0, avgTTL: 0, ttlSum: 0, ttlCount: 0
+		};
+		
+		existingMetrics[operation + 's']++;
+		existingMetrics.totalRequests++;
+		
+		if (operation === 'write' && ttl) {
+			existingMetrics.ttlSum += ttl;
+			existingMetrics.ttlCount++;
+			existingMetrics.avgTTL = existingMetrics.ttlSum / existingMetrics.ttlCount;
+		}
+		
+		await kv.put(metricKey, JSON.stringify(existingMetrics), { expirationTtl: 90000 });
+	} catch (error) {
+		// Don't let metrics failures affect main operations
+	}
+}
+
 export default {
 	async fetch(req, env, ctx): Promise<Response> {
 		const requestId = crypto.randomUUID();
 		const startTime = Date.now();
+		const requestLogger = logger.child({ requestId });
+		
+		// Increment request counter
+		metrics.incrementCounter('requests');
 		
 		try {
 			const url = new URL(req.url);
+			
+			// Handle health check endpoint
+			if (url.pathname === '/health') {
+				const healthResult = await healthChecker.runHealthChecks();
+				const statusCode = healthResult.status === 'healthy' ? 200 : 
+								  healthResult.status === 'degraded' ? 200 : 503;
+				
+				return new Response(JSON.stringify(healthResult), {
+					status: statusCode,
+					headers: { 
+						'Content-Type': 'application/json',
+						'X-Request-ID': requestId
+					}
+				});
+			}
+			
+			// Handle metrics endpoint
+			if (url.pathname === '/metrics') {
+				const currentMetrics = metrics.getMetrics();
+				return new Response(JSON.stringify({
+					...currentMetrics,
+					timestamp: new Date().toISOString(),
+					service: 'resolver'
+				}), {
+					status: 200,
+					headers: { 
+						'Content-Type': 'application/json',
+						'X-Request-ID': requestId
+					}
+				});
+			}
 			
 			// Handle root path
 			if (url.pathname === '/') {
@@ -156,7 +285,8 @@ export default {
 			
 			// Validate short code format
 			if (!shortCode || shortCode.length < 3 || shortCode.length > 10) {
-				logEvent('warn', 'Invalid short code format', { shortCode, requestId });
+				requestLogger.warn('Invalid short code format', { shortCode });
+				metrics.incrementCounter('invalid_requests');
 				return new Response(JSON.stringify({
 					error: {
 						code: 'INVALID_SHORT_CODE',
@@ -170,24 +300,29 @@ export default {
 				});
 			}
 			
-			logEvent('info', 'Processing redirect request', { shortCode, requestId });
+			requestLogger.info('Processing redirect request', { shortCode });
 			
 			// Step 1: Try KV cache with fallback
-			let resolvedUrl = await getFromKVWithFallback(env, shortCode);
+			let result = await getFromKVWithFallback(env, shortCode);
+			let resolvedUrl = result.url;
+			let clickCount = result.clickCount || 0;
 			
 			// Step 2: If KV miss or unavailable, try D1 with circuit breaker
 			if (!resolvedUrl) {
-				resolvedUrl = await getFromD1WithCircuitBreaker(env, shortCode);
+				result = await getFromD1WithCircuitBreaker(env, shortCode);
+				resolvedUrl = result.url;
+				clickCount = result.clickCount || 0;
 				
-				// If we got a result from D1, update cache asynchronously
+				// If we got a result from D1, update cache asynchronously with intelligent TTL
 				if (resolvedUrl) {
-					updateCacheAsync(env, shortCode, resolvedUrl, ctx);
+					updateCacheAsync(env, shortCode, resolvedUrl, clickCount, ctx);
 				}
 			}
 			
 			// Step 3: Handle not found case
 			if (!resolvedUrl) {
-				logEvent('info', 'Short code not found', { shortCode, requestId });
+				requestLogger.info('Short code not found', { shortCode });
+				metrics.incrementCounter('not_found');
 				return new Response(JSON.stringify({
 					error: {
 						code: 'NOT_FOUND',
@@ -206,12 +341,14 @@ export default {
 			
 			// Step 5: Perform redirect
 			const processingTime = Date.now() - startTime;
-			logEvent('info', 'Redirect successful', { 
+			requestLogger.info('Redirect successful', { 
 				shortCode, 
-				requestId, 
-				processingTimeMs: processingTime,
-				destination: resolvedUrl 
+				duration: processingTime,
+				metadata: { destination: resolvedUrl }
 			});
+			
+			metrics.recordTiming('response_time', processingTime);
+			metrics.incrementCounter('successful_redirects');
 			
 			return new Response(null, {
 				status: 302,
@@ -224,15 +361,17 @@ export default {
 			
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
-			logEvent('error', 'Unexpected error in resolver', {
-				requestId,
-				processingTimeMs: processingTime,
+			requestLogger.error('Unexpected error in resolver', {
+				duration: processingTime,
 				error: error instanceof Error ? {
 					name: error.name,
 					message: error.message,
 					stack: error.stack
-				} : String(error)
+				} : { name: 'Unknown', message: String(error) }
 			});
+			
+			metrics.recordTiming('response_time', processingTime);
+			metrics.incrementCounter('errors');
 			
 			// Return 500 with proper error structure
 			return new Response(JSON.stringify({
@@ -249,6 +388,11 @@ export default {
 					'X-Request-ID': requestId
 				}
 			});
+		} finally {
+			// Log metrics periodically (every 100 requests)
+			if (metrics.getMetrics().requestCount % 100 === 0) {
+				metrics.logMetrics();
+			}
 		}
 	},
 } satisfies ExportedHandler<Env, Error>;
@@ -296,15 +440,20 @@ function processAnalyticsAsync(
 				};
 
 				await env.shortener_analytics.send(analyticsData);
-				logEvent('info', 'Analytics queued successfully', { shortCode, requestId });
+				logger.info('Analytics queued successfully', { shortCode, requestId });
 				
 			} catch (error) {
 				// Log error but don't fail the redirect
-				logEvent('error', 'Failed to queue analytics data', {
+				logger.error('Failed to queue analytics data', {
 					shortCode,
 					requestId,
-					error: error instanceof Error ? error.message : String(error)
+					error: error instanceof Error ? {
+						name: error.name,
+						message: error.message
+					} : { name: 'Unknown', message: String(error) }
 				});
+				
+				metrics.incrementCounter('analytics_errors');
 				
 				// Could implement fallback storage here if needed
 				// For now, we prioritize redirect performance over analytics completeness

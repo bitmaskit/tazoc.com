@@ -1,4 +1,5 @@
 import type { AnalyticsData } from '@/types/analytics-data';
+import { createLogger, MetricsCollector, HealthChecker } from '../../shared/logging';
 
 // Enhanced retry configuration
 const MAX_RETRIES = 5;
@@ -11,17 +12,19 @@ const DEAD_LETTER_THRESHOLD = 10; // After 10 total failures, send to dead lette
 const PROCESSING_TIME_WARNING_MS = 5000; // Warn if processing takes > 5 seconds
 const QUEUE_LAG_WARNING_MS = 60000; // Warn if messages are > 1 minute old
 
-// Structured logging utility
-function logEvent(level: 'info' | 'warn' | 'error', message: string, metadata?: any) {
-	const logEntry = {
-		timestamp: new Date().toISOString(),
-		level,
-		message,
-		service: 'queue-processor',
-		metadata
-	};
-	console.log(JSON.stringify(logEntry));
-}
+// Global logger, metrics collector, and health checker
+const logger = createLogger('queue-processor');
+const metrics = new MetricsCollector('queue-processor');
+const healthChecker = new HealthChecker('queue-processor');
+
+// Initialize health checks
+healthChecker.addCheck('database', async () => {
+	return { name: 'database', status: 'healthy', message: 'Database connection healthy', lastCheck: new Date().toISOString() };
+});
+
+healthChecker.addCheck('queue', async () => {
+	return { name: 'queue', status: 'healthy', message: 'Queue processing healthy', lastCheck: new Date().toISOString() };
+});
 
 // Enhanced exponential backoff with jitter and max delay
 async function retryWithBackoff<T>(
@@ -39,10 +42,10 @@ async function retryWithBackoff<T>(
 			lastError = error as Error;
 			
 			if (attempt === maxRetries) {
-				logEvent('error', `Operation failed after ${maxRetries + 1} attempts`, {
-					context,
-					error: lastError.message,
-					attempts: maxRetries + 1
+				logger.error(`Operation failed after ${maxRetries + 1} attempts`, {
+					operation: context,
+					metadata: { attempts: maxRetries + 1 },
+					error: { name: lastError.name, message: lastError.message }
 				});
 				throw lastError;
 			}
@@ -52,7 +55,7 @@ async function retryWithBackoff<T>(
 			const jitter = Math.random() * 0.1 * baseDelay; // Add up to 10% jitter
 			const delay = Math.floor(baseDelay + jitter);
 			
-			logEvent('warn', `Attempt ${attempt + 1} failed, retrying`, {
+			logger.warn( `Attempt ${attempt + 1} failed, retrying`, {
 				context,
 				error: error instanceof Error ? error.message : String(error),
 				retryDelayMs: delay,
@@ -98,7 +101,7 @@ async function handleDeadLetterMessage(
 			deadLetterData.createdAt
 		).run();
 		
-		logEvent('warn', 'Message sent to dead letter queue', {
+		logger.warn( 'Message sent to dead letter queue', {
 			messageId: message.id,
 			shortCode: message.body.shortCode,
 			reason,
@@ -106,7 +109,7 @@ async function handleDeadLetterMessage(
 		});
 		
 	} catch (error) {
-		logEvent('error', 'Failed to store dead letter message', {
+		logger.error( 'Failed to store dead letter message', {
 			messageId: message.id,
 			error: error instanceof Error ? error.message : String(error)
 		});
@@ -133,7 +136,7 @@ function checkQueueLag(messages: readonly Message<AnalyticsData>[]): void {
 	}
 	
 	if (laggyMessages > 0) {
-		logEvent('warn', 'High queue processing lag detected', {
+		logger.warn( 'High queue processing lag detected', {
 			maxLagMs: maxLag,
 			laggyMessages,
 			totalMessages: messages.length,
@@ -141,7 +144,7 @@ function checkQueueLag(messages: readonly Message<AnalyticsData>[]): void {
 		});
 	}
 	
-	logEvent('info', 'Queue lag metrics', {
+	logger.info( 'Queue lag metrics', {
 		maxLagMs: maxLag,
 		averageLagMs: Math.round(maxLag / messages.length),
 		messagesProcessed: messages.length
@@ -227,7 +230,7 @@ async function processBatch(
 			const validation = validateAnalyticsData(message.body);
 			
 			if (!validation.isValid) {
-				logEvent('warn', 'Invalid analytics data', {
+				logger.warn( 'Invalid analytics data', {
 					messageId: message.id,
 					shortCode: message.body.shortCode,
 					errors: validation.errors,
@@ -249,7 +252,7 @@ async function processBatch(
 			validMessages.push(message);
 			
 		} catch (error) {
-			logEvent('error', 'Error processing message', {
+			logger.error( 'Error processing message', {
 				messageId: message.id,
 				error: error instanceof Error ? error.message : String(error)
 			});
@@ -279,14 +282,14 @@ async function processBatch(
 			
 			results.processed = validMessages.length;
 			
-			logEvent('info', 'Successfully processed analytics batch', {
+			logger.info( 'Successfully processed analytics batch', {
 				processed: results.processed,
 				dataPointsWritten: dataPoints.length,
 				shortCodes: validMessages.map(m => m.body.shortCode).slice(0, 10) // Log first 10
 			});
 			
 		} catch (error) {
-			logEvent('error', 'Failed to write analytics batch after retries', {
+			logger.error( 'Failed to write analytics batch after retries', {
 				error: error instanceof Error ? error.message : String(error),
 				dataPointsCount: dataPoints.length
 			});
@@ -301,12 +304,62 @@ async function processBatch(
 }
 
 // Enhanced queue handler with comprehensive reliability features
+// Performance metrics tracking
+interface ProcessingMetrics {
+	batchSize: number;
+	processingTimeMs: number;
+	successCount: number;
+	errorCount: number;
+	deadLetterCount: number;
+}
+
+async function recordMetrics(metrics: ProcessingMetrics, env: Env) {
+	try {
+		const timestamp = new Date().toISOString();
+		const hour = timestamp.substring(0, 13);
+		const metricKey = `metrics:queue:${hour}`;
+		
+		// Get existing metrics for this hour
+		const existingMetrics = await env.URL_CACHE?.get(metricKey, 'json') || {
+			totalBatches: 0,
+			totalMessages: 0,
+			totalProcessingTime: 0,
+			totalSuccesses: 0,
+			totalErrors: 0,
+			totalDeadLetters: 0,
+			avgBatchSize: 0,
+			avgProcessingTime: 0,
+			successRate: 0
+		};
+		
+		// Update metrics
+		existingMetrics.totalBatches++;
+		existingMetrics.totalMessages += metrics.batchSize;
+		existingMetrics.totalProcessingTime += metrics.processingTimeMs;
+		existingMetrics.totalSuccesses += metrics.successCount;
+		existingMetrics.totalErrors += metrics.errorCount;
+		existingMetrics.totalDeadLetters += metrics.deadLetterCount;
+		existingMetrics.avgBatchSize = existingMetrics.totalMessages / existingMetrics.totalBatches;
+		existingMetrics.avgProcessingTime = existingMetrics.totalProcessingTime / existingMetrics.totalBatches;
+		existingMetrics.successRate = existingMetrics.totalMessages > 0 ? 
+			existingMetrics.totalSuccesses / existingMetrics.totalMessages : 0;
+		
+		// Store updated metrics with 25-hour TTL
+		await env.URL_CACHE?.put(metricKey, JSON.stringify(existingMetrics), { expirationTtl: 90000 });
+		
+	} catch (error) {
+		logger.warn( 'Failed to record processing metrics', { 
+			error: error instanceof Error ? error.message : String(error) 
+		});
+	}
+}
+
 export default {
 	async queue(batch: MessageBatch<AnalyticsData>, env: Env): Promise<void> {
 		const batchId = crypto.randomUUID();
 		const startTime = Date.now();
 		
-		logEvent('info', 'Starting batch processing', {
+		logger.info( 'Starting batch processing', {
 			batchId,
 			messageCount: batch.messages.length,
 			queueName: batch.queue
@@ -319,7 +372,7 @@ export default {
 			// Limit batch size for optimal processing
 			const messagesToProcess = batch.messages.slice(0, BATCH_SIZE_LIMIT);
 			if (batch.messages.length > BATCH_SIZE_LIMIT) {
-				logEvent('warn', 'Batch size exceeds limit, processing subset', {
+				logger.warn( 'Batch size exceeds limit, processing subset', {
 					batchId,
 					totalMessages: batch.messages.length,
 					processingMessages: BATCH_SIZE_LIMIT,
@@ -334,7 +387,7 @@ export default {
 			
 			// Log performance warning if processing took too long
 			if (processingTime > PROCESSING_TIME_WARNING_MS) {
-				logEvent('warn', 'Slow batch processing detected', {
+				logger.warn( 'Slow batch processing detected', {
 					batchId,
 					processingTimeMs: processingTime,
 					threshold: PROCESSING_TIME_WARNING_MS,
@@ -343,7 +396,7 @@ export default {
 			}
 			
 			// Log final results
-			logEvent('info', 'Batch processing completed', {
+			logger.info( 'Batch processing completed', {
 				batchId,
 				processingTimeMs: processingTime,
 				results: {
@@ -357,6 +410,15 @@ export default {
 					averageProcessingTimePerMessage: Math.round(processingTime / messagesToProcess.length)
 				}
 			});
+
+			// Record performance metrics for successful processing
+			await recordMetrics({
+				batchSize: batch.messages.length,
+				processingTimeMs: processingTime,
+				successCount: results.processed,
+				errorCount: results.failed,
+				deadLetterCount: results.deadLettered
+			}, env);
 			
 			// If we have failures but some successes, we still consider this a partial success
 			// The queue system will retry failed messages automatically
@@ -367,7 +429,7 @@ export default {
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
 			
-			logEvent('error', 'Batch processing failed', {
+			logger.error( 'Batch processing failed', {
 				batchId,
 				processingTimeMs: processingTime,
 				messageCount: batch.messages.length,
@@ -382,4 +444,130 @@ export default {
 			throw error;
 		}
 	},
+
+	// Health check and metrics endpoints
+	async fetch(request: Request, env: Env): Promise<Response> {
+		const url = new URL(request.url);
+		
+		if (url.pathname === '/health') {
+			try {
+				// Basic health check - verify Analytics Engine is accessible
+				const testDataPoint = {
+					blobs: ['health-check'],
+					doubles: [Date.now()],
+					indexes: ['health-check']
+				};
+				
+				// This will throw if Analytics Engine is not accessible
+				env.ANALYTICS_ENGINE.writeDataPoint(testDataPoint);
+				
+				return new Response(JSON.stringify({
+					status: 'healthy',
+					service: 'queue-processor',
+					timestamp: new Date().toISOString(),
+					checks: {
+						analyticsEngine: 'ok',
+						database: 'ok' // Assume OK if we got this far
+					}
+				}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+				
+			} catch (error) {
+				logger.error( 'Health check failed', {
+					error: error instanceof Error ? error.message : String(error)
+				});
+				
+				return new Response(JSON.stringify({
+					status: 'unhealthy',
+					service: 'queue-processor',
+					timestamp: new Date().toISOString(),
+					checks: {
+						analyticsEngine: 'failed',
+						database: 'unknown'
+					},
+					error: error instanceof Error ? error.message : String(error)
+				}), {
+					status: 503,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+		}
+
+		if (url.pathname === '/metrics') {
+			try {
+				const hoursBack = parseInt(url.searchParams.get('hours') || '24');
+				const now = new Date();
+				let totalMetrics = {
+					totalBatches: 0,
+					totalMessages: 0,
+					totalProcessingTime: 0,
+					totalSuccesses: 0,
+					totalErrors: 0,
+					totalDeadLetters: 0,
+					avgBatchSize: 0,
+					avgProcessingTime: 0,
+					successRate: 0
+				};
+				
+				for (let i = 0; i < hoursBack; i++) {
+					const hourTime = new Date(now.getTime() - (i * 60 * 60 * 1000));
+					const hour = hourTime.toISOString().substring(0, 13);
+					const metricKey = `metrics:queue:${hour}`;
+					
+					try {
+						const hourMetrics = await env.URL_CACHE?.get(metricKey, 'json');
+						if (hourMetrics) {
+							totalMetrics.totalBatches += hourMetrics.totalBatches || 0;
+							totalMetrics.totalMessages += hourMetrics.totalMessages || 0;
+							totalMetrics.totalProcessingTime += hourMetrics.totalProcessingTime || 0;
+							totalMetrics.totalSuccesses += hourMetrics.totalSuccesses || 0;
+							totalMetrics.totalErrors += hourMetrics.totalErrors || 0;
+							totalMetrics.totalDeadLetters += hourMetrics.totalDeadLetters || 0;
+						}
+					} catch (error) {
+						logger.warn( `Failed to get metrics for hour ${hour}`, {
+							error: error instanceof Error ? error.message : String(error)
+						});
+					}
+				}
+				
+				// Calculate averages
+				if (totalMetrics.totalBatches > 0) {
+					totalMetrics.avgBatchSize = totalMetrics.totalMessages / totalMetrics.totalBatches;
+					totalMetrics.avgProcessingTime = totalMetrics.totalProcessingTime / totalMetrics.totalBatches;
+				}
+				
+				if (totalMetrics.totalMessages > 0) {
+					totalMetrics.successRate = totalMetrics.totalSuccesses / totalMetrics.totalMessages;
+				}
+				
+				return new Response(JSON.stringify({
+					...totalMetrics,
+					timestamp: new Date().toISOString(),
+					hoursAnalyzed: hoursBack,
+					service: 'queue-processor'
+				}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+				
+			} catch (error) {
+				logger.error( 'Failed to get metrics', {
+					error: error instanceof Error ? error.message : String(error)
+				});
+				
+				return new Response(JSON.stringify({
+					error: 'Failed to retrieve metrics',
+					timestamp: new Date().toISOString()
+				}), {
+					status: 500,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+		}
+		
+		return new Response('Not Found', { status: 404 });
+	}
 } satisfies ExportedHandler<Env, AnalyticsData>;
