@@ -114,7 +114,7 @@ async function handleDeadLetterMessage(
 }
 
 // Queue lag monitoring
-function checkQueueLag(messages: Message<AnalyticsData>[]): void {
+function checkQueueLag(messages: readonly Message<AnalyticsData>[]): void {
 	const now = Date.now();
 	let maxLag = 0;
 	let laggyMessages = 0;
@@ -214,7 +214,7 @@ function mapToDataPoint(analyticsData: AnalyticsData): AnalyticsEngineDataPoint 
 
 // Batch processing with size optimization
 async function processBatch(
-	messages: Message<AnalyticsData>[], 
+	messages: readonly Message<AnalyticsData>[], 
 	env: Env
 ): Promise<{ processed: number; failed: number; deadLettered: number }> {
 	const results = { processed: 0, failed: 0, deadLettered: 0 };

@@ -24,9 +24,9 @@ interface ErrorResponse {
  * Create error response with consistent format
  */
 function createErrorResponse(
-  code: string, 
-  message: string, 
-  status: number = 400, 
+  code: string,
+  message: string,
+  status: number = 400,
   details?: any
 ): Response {
   const errorResponse: ErrorResponse = {
@@ -50,7 +50,7 @@ async function authenticateRequest(request: Request): Promise<User | null> {
     // For now, check for a simple auth header or cookie
     const authHeader = request.headers.get('Authorization');
     const cookies = request.headers.get('Cookie');
-    
+
     // Mock authentication for development - in production this would validate JWT/session
     if (authHeader?.startsWith('Bearer ') || cookies?.includes('session=')) {
       // Return mock user for now - replace with actual user lookup
@@ -62,7 +62,7 @@ async function authenticateRequest(request: Request): Promise<User | null> {
         avatar_url: 'https://github.com/testuser.png'
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error('Authentication error:', error);
@@ -75,13 +75,13 @@ async function authenticateRequest(request: Request): Promise<User | null> {
  */
 async function requireAuth(request: Request): Promise<{ user: User; error?: never } | { user?: never; error: Response }> {
   const user = await authenticateRequest(request);
-  
+
   if (!user) {
     return {
       error: createErrorResponse('UNAUTHORIZED', 'Authentication required', 401)
     };
   }
-  
+
   return { user };
 }
 
@@ -92,13 +92,13 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
   try {
     // Authentication is optional for shortening URLs
     const user = await authenticateRequest(request);
-    
+
     // Create new request with user context if authenticated
-    const body = await request.json();
+    const body = await request.json() as any;
     if (user) {
       body.userId = user.id; // Add user ID to request body
     }
-    
+
     // Forward to shortener worker using service binding
     const shortenerRequest = new Request(request.url.replace('/api/shorten', '/shorten'), {
       method: 'POST',
@@ -108,10 +108,10 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
       },
       body: JSON.stringify(body)
     });
-    
+
     const response = await env.SHORTENER.fetch(shortenerRequest);
     return response;
-    
+
   } catch (error) {
     console.error('Error in handleShorten:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Failed to process shortening request', 500);
@@ -124,10 +124,10 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
 async function handleGetLinks(request: Request, env: Env): Promise<Response> {
   const authResult = await requireAuth(request);
   if (authResult.error) return authResult.error;
-  
+
   try {
     const url = new URL(request.url);
-    
+
     // Forward to shortener worker with user context
     const shortenerRequest = new Request(url.toString().replace('/api/links', '/links'), {
       method: 'GET',
@@ -135,10 +135,10 @@ async function handleGetLinks(request: Request, env: Env): Promise<Response> {
         'X-User-ID': authResult.user.id.toString()
       }
     });
-    
+
     const response = await env.SHORTENER.fetch(shortenerRequest);
     return response;
-    
+
   } catch (error) {
     console.error('Error in handleGetLinks:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Failed to fetch links', 500);
@@ -152,17 +152,17 @@ async function handleGetLink(shortCode: string, request: Request, env: Env): Pro
   try {
     // Authentication is optional for viewing individual links
     const user = await authenticateRequest(request);
-    
+
     const shortenerRequest = new Request(`${request.url.replace(`/api/links/${shortCode}`, `/links/${shortCode}`)}`, {
       method: 'GET',
       headers: {
         ...(user && { 'X-User-ID': user.id.toString() })
       }
     });
-    
+
     const response = await env.SHORTENER.fetch(shortenerRequest);
     return response;
-    
+
   } catch (error) {
     console.error('Error in handleGetLink:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Failed to fetch link', 500);
@@ -175,7 +175,7 @@ async function handleGetLink(shortCode: string, request: Request, env: Env): Pro
 async function handleDeleteLink(shortCode: string, request: Request, env: Env): Promise<Response> {
   const authResult = await requireAuth(request);
   if (authResult.error) return authResult.error;
-  
+
   try {
     const shortenerRequest = new Request(`${request.url.replace(`/api/links/${shortCode}`, `/links/${shortCode}`)}`, {
       method: 'DELETE',
@@ -183,10 +183,10 @@ async function handleDeleteLink(shortCode: string, request: Request, env: Env): 
         'X-User-ID': authResult.user.id.toString()
       }
     });
-    
+
     const response = await env.SHORTENER.fetch(shortenerRequest);
     return response;
-    
+
   } catch (error) {
     console.error('Error in handleDeleteLink:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Failed to delete link', 500);
@@ -199,12 +199,12 @@ async function handleDeleteLink(shortCode: string, request: Request, env: Env): 
 async function handleGetAnalytics(shortCode: string, request: Request, env: Env): Promise<Response> {
   const authResult = await requireAuth(request);
   if (authResult.error) return authResult.error;
-  
+
   try {
     const url = new URL(request.url);
     const timeRange = url.searchParams.get('timeRange') || '7d'; // Default to 7 days
     const granularity = url.searchParams.get('granularity') || 'day'; // Default to daily
-    
+
     // TODO: Query Analytics Engine for click statistics
     // For now, return mock data structure
     const mockAnalytics = {
@@ -226,11 +226,11 @@ async function handleGetAnalytics(shortCode: string, request: Request, env: Env)
         bot: 0
       }
     };
-    
+
     return new Response(JSON.stringify(mockAnalytics), {
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
   } catch (error) {
     console.error('Error in handleGetAnalytics:', error);
     return createErrorResponse('INTERNAL_ERROR', 'Failed to fetch analytics', 500);
@@ -244,7 +244,7 @@ async function handleAuth(request: Request, pathname: string): Promise<Response>
   if (pathname === '/api/auth/user') {
     // Return current user info
     const user = await authenticateRequest(request);
-    
+
     return new Response(JSON.stringify({
       authenticated: !!user,
       user: user || null
@@ -252,7 +252,7 @@ async function handleAuth(request: Request, pathname: string): Promise<Response>
       headers: { 'Content-Type': 'application/json' }
     });
   }
-  
+
   if (pathname === '/api/auth/logout') {
     // Handle logout
     return new Response(JSON.stringify({ success: true }), {
@@ -263,7 +263,7 @@ async function handleAuth(request: Request, pathname: string): Promise<Response>
       }
     });
   }
-  
+
   return createErrorResponse('NOT_FOUND', 'Auth endpoint not found', 404);
 }
 
@@ -329,7 +329,7 @@ export default {
     } catch (error) {
       console.error('Unhandled error in frontend server:', error);
       const errorResponse = createErrorResponse('INTERNAL_ERROR', 'Internal server error', 500);
-      
+
       Object.entries(corsHeaders).forEach(([key, value]) => {
         errorResponse.headers.set(key, value);
       });
