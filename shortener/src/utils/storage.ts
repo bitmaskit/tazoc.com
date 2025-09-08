@@ -11,6 +11,7 @@ export interface LinkData {
   expiresAt?: string;
   isActive: boolean;
   clickCount?: number;
+  createdBy?: string; // User ID who created the link
 }
 
 export interface StorageEnv {
@@ -26,9 +27,9 @@ export interface StorageEnv {
  */
 export async function storeInDatabase(linkData: LinkData, db: D1Database): Promise<LinkData> {
   const query = `
-    INSERT INTO links (short_code, original_url, created_at, expires_at, is_active)
-    VALUES (?, ?, ?, ?, ?)
-    RETURNING id, short_code, original_url, created_at, expires_at, is_active, click_count
+    INSERT INTO links (short_code, destination, created_at, expires_at, is_active, created_by)
+    VALUES (?, ?, ?, ?, ?, ?)
+    RETURNING id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
   `;
 
   const result = await db.prepare(query)
@@ -37,7 +38,8 @@ export async function storeInDatabase(linkData: LinkData, db: D1Database): Promi
       linkData.originalUrl,
       linkData.createdAt,
       linkData.expiresAt || null,
-      linkData.isActive ? 1 : 0
+      linkData.isActive ? 1 : 0,
+      linkData.createdBy || null
     )
     .first<LinkData>();
 
@@ -135,7 +137,7 @@ export async function getFromCache(shortCode: string, kv: KVNamespace): Promise<
  */
 export async function getFromDatabase(shortCode: string, db: D1Database): Promise<LinkData | null> {
   const query = `
-    SELECT id, short_code, original_url, created_at, expires_at, is_active, click_count
+    SELECT id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
     FROM links 
     WHERE short_code = ? AND is_active = 1
   `;
@@ -214,11 +216,120 @@ export async function incrementClickCount(shortCode: string, db: D1Database): Pr
   const query = `
     UPDATE links 
     SET click_count = COALESCE(click_count, 0) + 1,
-        last_accessed_at = CURRENT_TIMESTAMP
+        updated_at = CURRENT_TIMESTAMP
     WHERE short_code = ? AND is_active = 1
   `;
 
   await db.prepare(query)
     .bind(shortCode)
     .run();
+}
+
+/**
+ * Get links for a specific user
+ * @param userId - The user ID to filter by
+ * @param env - Storage environment with DB and KV
+ * @param limit - Maximum number of links to return
+ * @param offset - Number of links to skip
+ * @returns Promise<{links: LinkData[], total: number}> - User's links and total count
+ */
+export async function getUserLinks(
+  userId: string, 
+  env: StorageEnv, 
+  limit: number = 50, 
+  offset: number = 0
+): Promise<{links: LinkData[], total: number}> {
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM links 
+    WHERE created_by = ? AND is_active = 1
+  `;
+  
+  const countResult = await env.DB.prepare(countQuery)
+    .bind(userId)
+    .first<{total: number}>();
+  
+  const total = countResult?.total || 0;
+
+  // Get paginated links
+  const linksQuery = `
+    SELECT id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
+    FROM links 
+    WHERE created_by = ? AND is_active = 1
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const linksResult = await env.DB.prepare(linksQuery)
+    .bind(userId, limit, offset)
+    .all<LinkData>();
+
+  return {
+    links: linksResult.results || [],
+    total
+  };
+}
+
+/**
+ * Check if a user owns a specific link
+ * @param shortCode - The short code to check
+ * @param userId - The user ID to verify ownership
+ * @param db - D1 database instance
+ * @returns Promise<boolean> - true if user owns the link
+ */
+export async function checkLinkOwnership(shortCode: string, userId: string, db: D1Database): Promise<boolean> {
+  const query = `
+    SELECT 1
+    FROM links 
+    WHERE short_code = ? AND created_by = ? AND is_active = 1
+  `;
+
+  const result = await db.prepare(query)
+    .bind(shortCode, userId)
+    .first();
+
+  return !!result;
+}
+
+/**
+ * Delete URL mapping with ownership check
+ * @param shortCode - The short code to delete
+ * @param userId - The user ID requesting deletion
+ * @param env - Storage environment with DB and KV
+ * @returns Promise<{success: boolean, error?: string}> - Deletion result
+ */
+export async function deleteUserLink(
+  shortCode: string, 
+  userId: string, 
+  env: StorageEnv
+): Promise<{success: boolean, error?: string}> {
+  // Check ownership first
+  const ownsLink = await checkLinkOwnership(shortCode, userId, env.DB);
+  
+  if (!ownsLink) {
+    return { success: false, error: 'Link not found or access denied' };
+  }
+
+  // Soft delete in database
+  const query = `
+    UPDATE links 
+    SET is_active = 0, updated_at = CURRENT_TIMESTAMP 
+    WHERE short_code = ? AND created_by = ? AND is_active = 1
+  `;
+
+  const result = await env.DB.prepare(query)
+    .bind(shortCode, userId)
+    .run();
+
+  const wasDeleted = result.changes > 0;
+
+  if (wasDeleted) {
+    // Remove from cache (fire-and-forget)
+    env.KV.delete(`link:${shortCode}`).catch(error => {
+      console.error('Failed to delete from cache:', error);
+    });
+  }
+
+  return { success: wasDeleted };
 }

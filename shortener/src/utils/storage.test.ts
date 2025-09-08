@@ -62,7 +62,8 @@ describe('storage utilities', () => {
         'https://example.com',
         '2024-01-01T00:00:00Z',
         null,
-        1
+        1,
+        null
       );
     });
 
@@ -78,7 +79,8 @@ describe('storage utilities', () => {
         'https://example.com',
         '2024-01-01T00:00:00Z',
         '2024-12-31T23:59:59Z',
-        1
+        1,
+        null
       );
     });
 

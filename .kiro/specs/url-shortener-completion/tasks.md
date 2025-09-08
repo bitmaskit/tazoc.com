@@ -73,15 +73,15 @@
     - Add search and filtering capabilities
     - _Requirements: 3.3, 3.4_
 
-- [ ] 6. Integrate frontend with backend services
-  - [ ] 6.1 Update frontend server API routes
+- [x] 6. Integrate frontend with backend services
+  - [x] 6.1 Update frontend server API routes
     - Implement proxy routes to shortener worker
     - Add authentication middleware for protected endpoints
     - Create Analytics Engine query endpoints for link statistics
     - Add proper error handling and response formatting
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ] 6.2 Connect authentication with URL creation
+  - [x] 6.2 Connect authentication with URL creation
     - Modify shortener worker to accept user identification
     - Update database schema to track link ownership
     - Implement user-specific link filtering

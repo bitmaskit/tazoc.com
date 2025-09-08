@@ -1,11 +1,20 @@
 import { generateUniqueShortCode } from './utils/shortCode';
 import { validateUrl, normalizeUrl } from './utils/urlValidation';
-import { storeUrlMapping, getUrlMapping, deleteUrlMapping, type StorageEnv } from './utils/storage';
+import { 
+  storeUrlMapping, 
+  getUrlMapping, 
+  deleteUrlMapping, 
+  getUserLinks,
+  deleteUserLink,
+  type StorageEnv,
+  type LinkData 
+} from './utils/storage';
 
 interface ShortenRequest {
   url: string;
   customCode?: string;
   expiresAt?: string;
+  userId?: string; // User ID from authentication
 }
 
 interface ErrorResponse {
@@ -61,11 +70,19 @@ function createSuccessResponse(data: any, status: number = 200): Response {
 }
 
 /**
+ * Extract user ID from request headers
+ */
+function getUserIdFromRequest(request: Request): string | null {
+  return request.headers.get('X-User-ID') || null;
+}
+
+/**
  * Handle POST /shorten endpoint
  */
 async function handleShorten(request: Request, env: Env): Promise<Response> {
   try {
     const body: ShortenRequest = await request.json();
+    const userId = getUserIdFromRequest(request);
     
     if (!body.url) {
       return createErrorResponse('MISSING_URL', 'URL is required');
@@ -98,13 +115,14 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
       expiresAt = expiry.toISOString();
     }
 
-    // Store the URL mapping
-    const linkData = {
+    // Store the URL mapping with user ownership
+    const linkData: LinkData = {
       shortCode,
       originalUrl: normalizedUrl,
       createdAt: new Date().toISOString(),
       expiresAt,
-      isActive: true
+      isActive: true,
+      createdBy: userId || undefined // Track ownership if user is authenticated
     };
 
     const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
@@ -141,19 +159,38 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
 }
 
 /**
- * Handle GET /links endpoint
+ * Handle GET /links endpoint - requires user authentication
  */
 async function handleGetLinks(request: Request, env: Env): Promise<Response> {
   try {
+    const userId = getUserIdFromRequest(request);
+    
+    if (!userId) {
+      return createErrorResponse('UNAUTHORIZED', 'Authentication required', 401);
+    }
+
     const url = new URL(request.url);
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
-    // TODO: Add user authentication and filter by user
-    // For now, return a placeholder response
+    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
+    const result = await getUserLinks(userId, storageEnv, limit, offset);
+
+    // Transform links to include shortUrl
+    const transformedLinks = result.links.map(link => ({
+      id: link.id,
+      shortCode: link.shortCode,
+      shortUrl: `https://short.ly/${link.shortCode}`, // TODO: Use actual domain
+      originalUrl: link.originalUrl,
+      createdAt: link.createdAt,
+      expiresAt: link.expiresAt,
+      isActive: link.isActive,
+      clickCount: link.clickCount || 0
+    }));
+
     const response = {
-      links: [],
-      total: 0,
+      links: transformedLinks,
+      total: result.total,
       limit,
       offset
     };
@@ -198,15 +235,24 @@ async function handleGetLink(shortCode: string, env: Env): Promise<Response> {
 }
 
 /**
- * Handle DELETE /links/:shortCode endpoint
+ * Handle DELETE /links/:shortCode endpoint - requires user authentication and ownership
  */
-async function handleDeleteLink(shortCode: string, env: Env): Promise<Response> {
+async function handleDeleteLink(shortCode: string, request: Request, env: Env): Promise<Response> {
   try {
-    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
-    const wasDeleted = await deleteUrlMapping(shortCode, storageEnv);
+    const userId = getUserIdFromRequest(request);
+    
+    if (!userId) {
+      return createErrorResponse('UNAUTHORIZED', 'Authentication required', 401);
+    }
 
-    if (!wasDeleted) {
-      return createErrorResponse('LINK_NOT_FOUND', 'Link not found', 404);
+    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
+    const result = await deleteUserLink(shortCode, userId, storageEnv);
+
+    if (!result.success) {
+      if (result.error === 'Link not found or access denied') {
+        return createErrorResponse('LINK_NOT_FOUND', 'Link not found or access denied', 404);
+      }
+      return createErrorResponse('DELETE_FAILED', result.error || 'Failed to delete link', 500);
     }
 
     return createSuccessResponse({ success: true });
@@ -257,7 +303,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       if (!shortCode) {
         response = createErrorResponse('INVALID_PATH', 'Short code is required', 400);
       } else {
-        response = await handleDeleteLink(shortCode, env);
+        response = await handleDeleteLink(shortCode, request, env);
       }
     } else {
       response = createErrorResponse('NOT_FOUND', 'Endpoint not found', 404);

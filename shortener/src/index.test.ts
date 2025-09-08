@@ -13,12 +13,14 @@ vi.mock('./utils/urlValidation', () => ({
 vi.mock('./utils/storage', () => ({
   storeUrlMapping: vi.fn(),
   getUrlMapping: vi.fn(),
-  deleteUrlMapping: vi.fn()
+  deleteUrlMapping: vi.fn(),
+  getUserLinks: vi.fn(),
+  deleteUserLink: vi.fn()
 }));
 
 import { generateUniqueShortCode } from './utils/shortCode';
 import { validateUrl, normalizeUrl } from './utils/urlValidation';
-import { storeUrlMapping, getUrlMapping, deleteUrlMapping } from './utils/storage';
+import { storeUrlMapping, getUrlMapping, deleteUrlMapping, getUserLinks, deleteUserLink } from './utils/storage';
 
 // Import the worker
 import worker from './index';
@@ -235,10 +237,13 @@ describe('Shortener Worker API', () => {
 
   describe('DELETE /links/:shortCode', () => {
     it('should delete link successfully', async () => {
-      (deleteUrlMapping as any).mockResolvedValue(true);
+      (deleteUserLink as any).mockResolvedValue({ success: true });
 
       const request = new Request('https://shortener.com/links/abc123', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'X-User-ID': '1'
+        }
       });
 
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -246,14 +251,17 @@ describe('Shortener Worker API', () => {
 
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
-      expect(deleteUrlMapping).toHaveBeenCalledWith('abc123', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE });
+      expect(deleteUserLink).toHaveBeenCalledWith('abc123', '1', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE });
     });
 
     it('should return 404 for non-existent link', async () => {
-      (deleteUrlMapping as any).mockResolvedValue(false);
+      (deleteUserLink as any).mockResolvedValue({ success: false, error: 'Link not found or access denied' });
 
       const request = new Request('https://shortener.com/links/nonexistent', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'X-User-ID': '1'
+        }
       });
 
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -266,8 +274,13 @@ describe('Shortener Worker API', () => {
 
   describe('GET /links', () => {
     it('should return links list with pagination', async () => {
+      (getUserLinks as any).mockResolvedValue({ links: [], total: 0 });
+
       const request = new Request('https://shortener.com/links?limit=10&offset=0', {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'X-User-ID': '1'
+        }
       });
 
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -278,11 +291,17 @@ describe('Shortener Worker API', () => {
       expect(result.total).toBe(0);
       expect(result.limit).toBe(10);
       expect(result.offset).toBe(0);
+      expect(getUserLinks).toHaveBeenCalledWith('1', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE }, 10, 0);
     });
 
     it('should handle default pagination parameters', async () => {
+      (getUserLinks as any).mockResolvedValue({ links: [], total: 0 });
+
       const request = new Request('https://shortener.com/links', {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'X-User-ID': '1'
+        }
       });
 
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -291,11 +310,17 @@ describe('Shortener Worker API', () => {
       expect(response.status).toBe(200);
       expect(result.limit).toBe(50);
       expect(result.offset).toBe(0);
+      expect(getUserLinks).toHaveBeenCalledWith('1', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE }, 50, 0);
     });
 
     it('should limit maximum page size', async () => {
+      (getUserLinks as any).mockResolvedValue({ links: [], total: 0 });
+
       const request = new Request('https://shortener.com/links?limit=200', {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+          'X-User-ID': '1'
+        }
       });
 
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -303,6 +328,7 @@ describe('Shortener Worker API', () => {
 
       expect(response.status).toBe(200);
       expect(result.limit).toBe(100); // Should be capped at 100
+      expect(getUserLinks).toHaveBeenCalledWith('1', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE }, 100, 0);
     });
   });
 
