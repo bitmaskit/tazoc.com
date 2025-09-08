@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../stores/auth'
+import UrlShortenerForm from '../components/UrlShortenerForm.vue'
+import LinkManagementDashboard from '../components/LinkManagementDashboard.vue'
 
 const name = ref('Unknown')
 const { currentUser, isAuthenticated, checkAuthParams, logout } = useAuth()
@@ -29,6 +31,16 @@ onMounted(() => {
   <div>
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+      
+      <!-- URL Shortener Form -->
+      <div class="mb-6">
+        <UrlShortenerForm />
+      </div>
+      
+      <!-- Link Management Dashboard -->
+      <div class="mb-6">
+        <LinkManagementDashboard />
+      </div>
       
       <!-- API Test Section -->
       <div class="bg-white/5 backdrop-blur-sm rounded-lg p-6 mb-6 ring-1 ring-white/10">

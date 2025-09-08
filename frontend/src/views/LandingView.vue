@@ -67,26 +67,34 @@
               
               <!-- URL Input Form -->
               <div class="mt-10 mx-auto max-w-xl">
-                <form class="flex flex-col sm:flex-row gap-4">
-                  <div class="flex-1">
-                    <input
-                      type="url"
-                      disabled
-                      placeholder="https://your-long-url.com/very/long/path"
-                      class="w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed sm:text-sm/6"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    @click="openAuthModal"
-                    class="rounded-md bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors whitespace-nowrap"
-                  >
-                    Get started for free
-                  </button>
-                </form>
-                <p class="mt-3 text-sm text-gray-500">
-                  No sign-up required • Free forever • Unlimited short links
-                </p>
+                <!-- Show functional form for authenticated users -->
+                <div v-if="isAuthenticated" class="bg-white/10 backdrop-blur-sm rounded-lg p-6 ring-1 ring-white/20">
+                  <UrlShortenerForm />
+                </div>
+                
+                <!-- Show placeholder form for non-authenticated users -->
+                <div v-else>
+                  <form class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1">
+                      <input
+                        type="url"
+                        disabled
+                        placeholder="https://your-long-url.com/very/long/path"
+                        class="w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed sm:text-sm/6"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      @click="openAuthModal"
+                      class="rounded-md bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors whitespace-nowrap"
+                    >
+                      Get started for free
+                    </button>
+                  </form>
+                  <p class="mt-3 text-sm text-gray-500">
+                    No sign-up required • Free forever • Unlimited short links
+                  </p>
+                </div>
               </div>
             </div>
             
@@ -456,11 +464,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import AuthModal from '../components/AuthModal.vue'
+import UrlShortenerForm from '../components/UrlShortenerForm.vue'
+import { useAuth } from '../stores/auth'
 
 const showAuthModal = ref(false)
+const { isAuthenticated, checkAuthParams } = useAuth()
 
 const openAuthModal = () => {
   showAuthModal.value = true
@@ -475,4 +486,8 @@ const handleSwitchToSignup = () => {
   console.log('Switch to signup')
   closeAuthModal()
 }
+
+onMounted(() => {
+  checkAuthParams()
+})
 </script>
