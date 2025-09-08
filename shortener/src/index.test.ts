@@ -74,7 +74,7 @@ describe('Shortener Worker API', () => {
       expect(result.shortUrl).toContain('abc123');
       expect(normalizeUrl).toHaveBeenCalledWith('https://example.com');
       expect(validateUrl).toHaveBeenCalled();
-      expect(generateUniqueShortCode).toHaveBeenCalledWith(mockEnv.DB);
+      expect(generateUniqueShortCode).toHaveBeenCalledWith(mockEnv.URL_DB);
       expect(storeUrlMapping).toHaveBeenCalled();
     });
 
@@ -203,7 +203,7 @@ describe('Shortener Worker API', () => {
       expect(result.shortCode).toBe('abc123');
       expect(result.originalUrl).toBe('https://example.com');
       expect(result.clickCount).toBe(5);
-      expect(getUrlMapping).toHaveBeenCalledWith('abc123', { DB: mockEnv.DB, KV: mockEnv.KV });
+      expect(getUrlMapping).toHaveBeenCalledWith('abc123', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE });
     });
 
     it('should return 404 for non-existent link', async () => {
@@ -246,7 +246,7 @@ describe('Shortener Worker API', () => {
 
       expect(response.status).toBe(200);
       expect(result.success).toBe(true);
-      expect(deleteUrlMapping).toHaveBeenCalledWith('abc123', { DB: mockEnv.DB, KV: mockEnv.KV });
+      expect(deleteUrlMapping).toHaveBeenCalledWith('abc123', { DB: mockEnv.URL_DB, KV: mockEnv.URL_CACHE });
     });
 
     it('should return 404 for non-existent link', async () => {

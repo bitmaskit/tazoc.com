@@ -85,7 +85,7 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
       // TODO: Validate custom code format and availability
       shortCode = body.customCode;
     } else {
-      shortCode = await generateUniqueShortCode(env.DB);
+      shortCode = await generateUniqueShortCode(env.URL_DB);
     }
 
     // Validate expiration date if provided
@@ -107,7 +107,7 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
       isActive: true
     };
 
-    const storageEnv: StorageEnv = { DB: env.DB, KV: env.KV };
+    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
     const storedLink = await storeUrlMapping(linkData, storageEnv);
 
     // Create response
@@ -171,7 +171,7 @@ async function handleGetLinks(request: Request, env: Env): Promise<Response> {
  */
 async function handleGetLink(shortCode: string, env: Env): Promise<Response> {
   try {
-    const storageEnv: StorageEnv = { DB: env.DB, KV: env.KV };
+    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
     const linkData = await getUrlMapping(shortCode, storageEnv);
 
     if (!linkData) {
@@ -202,7 +202,7 @@ async function handleGetLink(shortCode: string, env: Env): Promise<Response> {
  */
 async function handleDeleteLink(shortCode: string, env: Env): Promise<Response> {
   try {
-    const storageEnv: StorageEnv = { DB: env.DB, KV: env.KV };
+    const storageEnv: StorageEnv = { DB: env.URL_DB, KV: env.URL_CACHE };
     const wasDeleted = await deleteUrlMapping(shortCode, storageEnv);
 
     if (!wasDeleted) {

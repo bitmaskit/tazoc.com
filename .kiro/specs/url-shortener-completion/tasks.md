@@ -43,14 +43,14 @@
     - Implement fire-and-forget pattern for analytics to not block redirects
     - _Requirements: 2.1, 2.6_
 
-- [ ] 4. Update database configuration and bindings
-  - [ ] 4.1 Add missing worker bindings
+- [x] 4. Update database configuration and bindings
+  - [x] 4.1 Add missing worker bindings
     - Update shortener wrangler.jsonc to include D1 and KV bindings
     - Update queue-processor wrangler.jsonc to include D1 binding for analytics
     - Regenerate worker configuration types for all services
     - _Requirements: 1.2, 1.3, 2.3_
 
-  - [ ] 4.2 Configure Analytics Engine binding
+  - [x] 4.2 Configure Analytics Engine binding
     - Add Analytics Engine binding to queue-processor wrangler.jsonc
     - Update environment types to include ANALYTICS_ENGINE binding
     - Test Analytics Engine integration with sample data points

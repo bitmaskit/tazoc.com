@@ -23,4 +23,11 @@
 			"dataset": "shortener_analytics"
 		}
 	],
+	"d1_databases": [
+		{
+			"binding": "URL_DB",
+			"database_name": "valio-shortener",
+			"database_id": "1c57b49e-f457-458d-806c-913315f3c20c"
+		}
+	],
 }

@@ -18,15 +18,15 @@
 	},
 	"d1_databases": [
 		{
-			"binding": "DB",
-			"database_name": "shortener-db",
-			"database_id": "placeholder-id"
+			"binding": "URL_DB",
+			"database_name": "valio-shortener",
+			"database_id": "1c57b49e-f457-458d-806c-913315f3c20c"
 		}
 	],
 	"kv_namespaces": [
 		{
-			"binding": "KV",
-			"id": "placeholder-id"
+			"binding": "URL_CACHE",
+			"id": "6503d83dd0e74e5ca7d4405124736dd1"
 		}
 	]
 }
