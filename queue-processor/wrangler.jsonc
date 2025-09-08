@@ -17,4 +17,10 @@
 			},
 		],
 	},
+	"analytics_engine_datasets": [
+		{
+			"binding": "ANALYTICS_ENGINE",
+			"dataset": "shortener_analytics"
+		}
+	],
 }
