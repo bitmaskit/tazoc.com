@@ -15,6 +15,12 @@
 			"experimental_remote": true,
 		},
 	],
+	"routes": [
+		{
+			"zone_id": "26142943a52fd597d4e38c337d5fa314",
+			"pattern": "tazoc.com/*",
+		},
+	],
 	"kv_namespaces": [
 		{
 			"binding": "URL_CACHE",

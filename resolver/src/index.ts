@@ -1,6 +1,7 @@
 export default {
 	async fetch(req, env, ctx): Promise<Response> {
 		const url = new URL(req.url);
+		console.log(`Trying to get: ${url.pathname}`);
 		if (url.pathname === '/') {
 			return env.FRONTEND.fetch(req);
 		}
