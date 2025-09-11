@@ -27,11 +27,11 @@ export default {
 			console.log(`Pathname: ${url.pathname}, Short code: ${shortCode}`);
 			return new Response(`Not found: ${shortCode}`, { status: 404 });
 		}
-		await env.shortener_analytics.send({
-			url: req.url,
-			method: req.method,
-			headers: Object.fromEntries(req.headers),
-		});
+		// await env.shortener_analytics.send({
+		// url: req.url,
+		// method: req.method,
+		// headers: Object.fromEntries(req.headers),
+		// });
 		return new Response(null, {
 			status: 302,
 			headers: {
