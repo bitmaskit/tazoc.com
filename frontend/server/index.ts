@@ -9,9 +9,23 @@ export default {
     const pathname = url.pathname;
 
     console.log(request, env, ctx);
-    return new Response();
+
+    // Simple API endpoint
+    if (url.pathname.startsWith("/api/")) {
+      return Response.json({
+        name: "Cloudflare",
+        message: "API is working!",
+        path: url.pathname,
+      });
+    }
+
+    if (url.pathname === "/") {
+      return new Response(null, { status: 404 });
+    }
+
+    return await env.RESOLVER.fetch(request);
   },
-};
+} satisfies ExportedHandler<Env>;
 
 // interface User {
 //   id: number;

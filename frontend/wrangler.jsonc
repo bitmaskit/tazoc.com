@@ -11,6 +11,8 @@
   "assets": {
     "directory": "./dist/client/",
     "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
   },
   "routes": [
     {
@@ -63,5 +65,8 @@
    * Service Bindings (communicate between multiple Workers)
    * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
    */
-  "services": [{ "binding": "SHORTENER", "service": "shortener" }],
+  "services": [
+    { "binding": "SHORTENER", "service": "shortener" },
+    { "binding": "RESOLVER", "service": "resolver" },
+  ],
 }
