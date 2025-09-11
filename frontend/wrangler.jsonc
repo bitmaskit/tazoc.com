@@ -49,7 +49,7 @@
     },
   ],
   "vars": {
-    "CALLBACK_URL": "https://localhost:5174/api/auth/callback",
+    "CALLBACK_URL": "https://tazoc.com/api/auth/callback",
   },
   /**
    * Note: Use secrets to store sensitive data.
