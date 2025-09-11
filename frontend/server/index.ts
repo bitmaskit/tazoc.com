@@ -8,8 +8,6 @@ export default {
     const method = request.method;
     const pathname = url.pathname;
 
-    console.log(request, env, ctx);
-
     // Simple API endpoint
     if (url.pathname.startsWith("/api/")) {
       return Response.json({
@@ -20,8 +18,11 @@ export default {
     }
 
     if (url.pathname === "/") {
+      console.log(`are we here`);
       return new Response(null, { status: 404 });
     }
+
+    console.log("Trying to get the resolver");
 
     return await env.RESOLVER.fetch(request);
   },

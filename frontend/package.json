@@ -8,8 +8,6 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:worker": "wrangler dev",
-    "dev:full": "run-p dev:worker dev",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "pnpm run build && wrangler dev",
     "build-only": "vite build",
