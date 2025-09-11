@@ -20,13 +20,15 @@
 		{
 			"binding": "URL_DB",
 			"database_name": "valio-shortener",
-			"database_id": "1c57b49e-f457-458d-806c-913315f3c20c"
+			"database_id": "1c57b49e-f457-458d-806c-913315f3c20c",
+			"experimental_remote": true,
 		}
 	],
 	"kv_namespaces": [
 		{
 			"binding": "URL_CACHE",
-			"id": "6503d83dd0e74e5ca7d4405124736dd1"
+			"id": "6503d83dd0e74e5ca7d4405124736dd1",
+			"experimental_remote": true,
 		}
 	]
 }

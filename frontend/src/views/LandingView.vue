@@ -464,7 +464,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import AuthModal from '../components/AuthModal.vue'
 import UrlShortenerForm from '../components/UrlShortenerForm.vue'
@@ -487,7 +487,17 @@ const handleSwitchToSignup = () => {
   closeAuthModal()
 }
 
+// Listen for successful authentication
+const handleAuthSuccess = () => {
+  closeAuthModal()
+}
+
 onMounted(() => {
   checkAuthParams()
+  document.addEventListener('auth-success', handleAuthSuccess)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('auth-success', handleAuthSuccess)
 })
 </script>

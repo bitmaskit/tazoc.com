@@ -250,8 +250,29 @@ const signInWithGoogle = () => {
   alert('Google OAuth would be implemented here')
 }
 
-const signInWithGitHub = () => {
-  console.log('GitHub sign in')
-  alert('OAuth implementation removed. Backend now only has basic API endpoint.')
+const signInWithGitHub = async () => {
+  console.log('GitHub sign in - setting up mock authentication')
+  
+  // For development, set a mock session cookie to enable authentication
+  document.cookie = 'session=mock-dev-session; path=/; max-age=3600; SameSite=Lax'
+  
+  // Set mock user in localStorage for the frontend
+  const mockUser = {
+    id: 1,
+    login: 'testuser',
+    name: 'Test User', 
+    email: 'test@example.com',
+    avatar_url: 'https://github.com/testuser.png'
+  }
+  
+  localStorage.setItem('mockUser', JSON.stringify(mockUser))
+  
+  // Close the modal and trigger auth check without page reload
+  const { useAuth } = await import('../stores/auth')
+  const { fetchCurrentUser } = useAuth()
+  await fetchCurrentUser()
+  
+  // Close modal
+  document.dispatchEvent(new CustomEvent('auth-success'))
 }
 </script>

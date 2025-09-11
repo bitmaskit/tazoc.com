@@ -15,10 +15,10 @@
             type="url"
             placeholder="https://example.com/very/long/url"
             :disabled="isLoading"
-            class="w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed sm:text-sm/6"
+            class="w-full rounded-md border-0 px-4 py-3 bg-white/10 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-400 disabled:bg-white/5 disabled:text-gray-400 disabled:cursor-not-allowed sm:text-sm/6"
             :class="{
-              'ring-red-500 focus:ring-red-600': validationError,
-              'ring-gray-300 focus:ring-indigo-600': !validationError
+              'ring-red-500 focus:ring-red-500': validationError,
+              'ring-white/20 focus:ring-indigo-400': !validationError
             }"
           />
           <div v-if="isLoading" class="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -150,6 +150,7 @@ const shortenUrl = async () => {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Include cookies for authentication
       body: JSON.stringify({
         url: urlInput.value.trim()
       })

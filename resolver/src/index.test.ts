@@ -45,20 +45,20 @@ describe('Resolver Worker', () => {
 
   describe('URL Resolution', () => {
     it('should redirect when URL found in KV cache', async () => {
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       
       const request = new Request('https://short.ly/abc123');
       const response = await worker.fetch(request, mockEnv, mockCtx);
       
       expect(response.status).toBe(302);
       expect(response.headers.get('Location')).toBe('https://example.com');
-      expect(mockEnv.URL_CACHE.get).toHaveBeenCalledWith('abc123');
+      expect(mockEnv.URL_CACHE.get).toHaveBeenCalledWith('link:abc123', 'json');
       expect(mockEnv.URL_DB.prepare).not.toHaveBeenCalled();
     });
 
     it('should fallback to D1 when KV cache miss', async () => {
       (mockEnv.URL_CACHE.get as any).mockResolvedValue(null);
-      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com' });
+      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com', click_count: 3 });
       (mockEnv.URL_CACHE.put as any).mockResolvedValue(undefined);
       
       const request = new Request('https://short.ly/abc123');
@@ -66,8 +66,8 @@ describe('Resolver Worker', () => {
       
       expect(response.status).toBe(302);
       expect(response.headers.get('Location')).toBe('https://example.com');
-      expect(mockEnv.URL_CACHE.get).toHaveBeenCalledWith('abc123');
-      expect(mockEnv.URL_DB.prepare).toHaveBeenCalledWith('SELECT destination FROM links WHERE short_code = ? LIMIT 1');
+      expect(mockEnv.URL_CACHE.get).toHaveBeenCalledWith('link:abc123', 'json');
+      expect(mockEnv.URL_DB.prepare).toHaveBeenCalledWith('SELECT destination, click_count FROM links WHERE short_code = ? AND is_active = 1 LIMIT 1');
       expect(mockStatement.bind).toHaveBeenCalledWith('abc123');
       
       // Should update cache asynchronously
@@ -76,7 +76,7 @@ describe('Resolver Worker', () => {
 
     it('should fallback to D1 when KV cache throws error', async () => {
       (mockEnv.URL_CACHE.get as any).mockRejectedValue(new Error('KV unavailable'));
-      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com' });
+      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com', click_count: 3 });
       
       const request = new Request('https://short.ly/abc123');
       const response = await worker.fetch(request, mockEnv, mockCtx);
@@ -145,7 +145,7 @@ describe('Resolver Worker', () => {
 
   describe('Analytics Processing', () => {
     it('should queue analytics data on successful redirect', async () => {
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       (mockEnv.shortener_analytics.send as any).mockResolvedValue(undefined);
       
       const request = new Request('https://short.ly/abc123', {
@@ -186,7 +186,7 @@ describe('Resolver Worker', () => {
     });
 
     it('should handle analytics queue failures gracefully', async () => {
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       (mockEnv.shortener_analytics.send as any).mockRejectedValue(new Error('Queue unavailable'));
       
       const request = new Request('https://short.ly/abc123');
@@ -199,7 +199,7 @@ describe('Resolver Worker', () => {
     });
 
     it('should capture comprehensive analytics data', async () => {
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       let capturedAnalyticsData: AnalyticsData | null = null;
       
       (mockEnv.shortener_analytics.send as any).mockImplementation((data: AnalyticsData) => {
@@ -312,7 +312,7 @@ describe('Resolver Worker', () => {
       // Create a fresh worker instance to avoid circuit breaker state
       const freshWorker = await import('./index');
       
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       
       const request = new Request('https://short.ly/abc123');
       const response = await freshWorker.default.fetch(request, mockEnv, mockCtx);
@@ -326,7 +326,7 @@ describe('Resolver Worker', () => {
       const freshWorker = await import('./index');
       
       (mockEnv.URL_CACHE.get as any).mockResolvedValue(null);
-      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com' });
+      (mockStatement.first as any).mockResolvedValue({ destination: 'https://example.com', click_count: 3 });
       (mockEnv.URL_CACHE.put as any).mockRejectedValue(new Error('Cache update failed'));
       
       const request = new Request('https://short.ly/abc123');
@@ -344,7 +344,7 @@ describe('Resolver Worker', () => {
       // Create a fresh worker instance to avoid circuit breaker state
       const freshWorker = await import('./index');
       
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       
       const request = new Request('https://short.ly/abc123');
       const response = await freshWorker.default.fetch(request, mockEnv, mockCtx);
@@ -356,7 +356,7 @@ describe('Resolver Worker', () => {
       // Create a fresh worker instance to avoid circuit breaker state
       const freshWorker = await import('./index');
       
-      (mockEnv.URL_CACHE.get as any).mockResolvedValue('https://example.com');
+      (mockEnv.URL_CACHE.get as any).mockResolvedValue({ originalUrl: 'https://example.com', clickCount: 5 });
       
       const request = new Request('https://short.ly/abc123');
       const response = await freshWorker.default.fetch(request, mockEnv, mockCtx);

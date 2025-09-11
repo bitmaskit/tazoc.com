@@ -32,6 +32,12 @@ export const useAuth = () => {
   const logout = async () => {
     isLoading.value = true
     try {
+      // Clear mock user data
+      localStorage.removeItem('mockUser')
+      
+      // Clear session cookie
+      document.cookie = 'session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      
       await fetch('/api/auth/logout', { method: 'POST' })
       currentUser.value = null
       // Redirect to landing page
@@ -46,6 +52,21 @@ export const useAuth = () => {
   const fetchCurrentUser = async () => {
     isLoading.value = true
     try {
+      // First check for mock user in localStorage (for development)
+      const mockUserData = localStorage.getItem('mockUser')
+      if (mockUserData) {
+        try {
+          const mockUser = JSON.parse(mockUserData)
+          currentUser.value = mockUser
+          console.log("Mock user loaded from localStorage:", mockUser.login);
+          isLoading.value = false
+          return
+        } catch (e) {
+          console.warn('Failed to parse mock user data:', e)
+          localStorage.removeItem('mockUser')
+        }
+      }
+      
       console.log("Fetching current user from /api/auth/user");
       const response = await fetch('/api/auth/user', {
         credentials: 'include' // Include cookies in the request
