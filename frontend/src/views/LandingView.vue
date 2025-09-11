@@ -493,7 +493,7 @@ const handleAuthSuccess = () => {
 }
 
 onMounted(() => {
-  checkAuthParams()
+  // checkAuthParams() // Disabled for now
   document.addEventListener('auth-success', handleAuthSuccess)
 })
 
