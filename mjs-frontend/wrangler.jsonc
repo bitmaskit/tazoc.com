@@ -15,7 +15,7 @@
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */
 	"placement": {
-		"mode": "smart"
+		"mode": "smart",
 	},
 	"secrets_store_secrets": [
 		{
@@ -50,13 +50,13 @@
 	 */
 	"assets": {
 		"directory": "./public/",
-		"binding": "ASSETS"
+		"binding": "ASSETS",
 	},
 	"kv_namespaces": [
 		{
 			"binding": "SESSIONS",
-			"id": "b0429b5a06f74cd58540076caf10e04d"
-		}
+			"id": "b0429b5a06f74cd58540076caf10e04d",
+		},
 	],
 	/**
 	 * Service Bindings (communicate between multiple Workers)

@@ -142,9 +142,17 @@ function showAuthenticatedView() {
   const sidebarName = document.getElementById('user-name-sidebar');
   const mobileAvatar = document.getElementById('user-avatar-mobile');
   
-  if (sidebarAvatar) sidebarAvatar.src = currentUser.avatar_url;
+  console.log('Setting avatar:', currentUser.avatar_url); // Debug log
+  
+  if (sidebarAvatar && currentUser.avatar_url) {
+    sidebarAvatar.src = currentUser.avatar_url;
+    console.log('Sidebar avatar src set to:', sidebarAvatar.src); // Debug log
+  }
   if (sidebarName) sidebarName.textContent = currentUser.name || currentUser.login;
-  if (mobileAvatar) mobileAvatar.src = currentUser.avatar_url;
+  if (mobileAvatar && currentUser.avatar_url) {
+    mobileAvatar.src = currentUser.avatar_url;
+    console.log('Mobile avatar src set to:', mobileAvatar.src); // Debug log
+  }
   
   // Load user's links
   loadLinks();
@@ -460,3 +468,13 @@ elements.urlInput.addEventListener('input', () => {
 
 // Initialize the application
 checkAuthStatus();
+
+// Add test function for avatar display (temporary)
+window.testAvatarDisplay = function() {
+  currentUser = {
+    avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4',
+    name: 'Test User',
+    login: 'testuser'
+  };
+  showAuthenticatedView();
+};
