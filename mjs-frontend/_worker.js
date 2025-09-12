@@ -10,7 +10,7 @@ const app = new Hono();
 // --- API ROUTES ---
 app.get('/api/login', async (c) => {
 	const state = randomId();
-	const redirectUri = new URL('/api/callback/github', c.req.url).toString();
+	const redirectUri = new URL('/api/callback', c.req.url).toString();
 	c.header('Set-Cookie', cookie(COOKIE_STATE, state, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/' }));
 	const clientId = await c.env.GITHUB_CLIENT_ID.get();
 	const authURL =
@@ -24,14 +24,14 @@ app.get('/api/login', async (c) => {
 	return c.redirect(authURL);
 });
 
-app.get('/api/callback/github', async (c) => {
+app.get('/api/callback', async (c) => {
 	const url = new URL(c.req.url);
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');
 	const cookies = parseCookies(c.req.header('Cookie') || '');
 	if (!code || !state || cookies[COOKIE_STATE] !== state) return c.text('OAuth validation failed', 400);
 
-	const redirectUri = new URL('/api/callback/github', c.req.url).toString();
+	const redirectUri = new URL('/api/callback', c.req.url).toString();
 	// in /api/login handler before building the URL
 	const clientId = await c.env.GITHUB_CLIENT_ID.get();
 	const clientSecret = await c.env.GITHUB_CLIENT_SECRET.get();
