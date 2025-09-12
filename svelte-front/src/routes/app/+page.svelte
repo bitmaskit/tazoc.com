@@ -19,9 +19,9 @@
 		}
 	});
 
-	// Load user links on mount
-	onMount(() => {
-		if ($authState.isAuthenticated) {
+	// Load user links when authenticated
+	$effect(() => {
+		if (!$authState.isLoading && $authState.isAuthenticated) {
 			links.loadLinks();
 		}
 	});
@@ -52,11 +52,11 @@
 	}
 
 	const filteredLinks = $derived(searchQuery 
-		? $linksState.list.filter(link => 
+		? $linksState.links.filter(link => 
 			link.originalUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			link.shortCode.toLowerCase().includes(searchQuery.toLowerCase())
 		)
-		: $linksState.list);
+		: $linksState.links);
 </script>
 
 {#if $authState.isLoading}
@@ -279,7 +279,7 @@
 						<div class="sm:flex-auto">
 							<h2 class="text-base/7 font-semibold text-white">Your Links</h2>
 							<p class="mt-1 text-sm text-gray-400">
-								{$linksState.list.length} link{$linksState.list.length !== 1 ? 's' : ''}
+								{$linksState.links.length} link{$linksState.links.length !== 1 ? 's' : ''}
 							</p>
 						</div>
 						<div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
