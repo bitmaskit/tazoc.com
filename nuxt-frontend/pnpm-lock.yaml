@@ -33,9 +33,6 @@ importers:
       nitropack:
         specifier: ^2.12.6
         version: 2.12.6
-      tailwindcss:
-        specifier: ^4.1.13
-        version: 4.1.13
       wrangler:
         specifier: ^4.35.0
         version: 4.35.0
@@ -3112,9 +3109,6 @@ packages:
   system-architecture@0.1.0:
     resolution: {integrity: sha512-ulAk51I9UVUyJgxlv9M6lFot2WP3e7t8Kz9+IS6D4rVba1tR9kON+Ey69f+1R4Q8cd45Lod6a4IcJIxnzGc/zA==}
     engines: {node: '>=18'}
-
-  tailwindcss@4.1.13:
-    resolution: {integrity: sha512-i+zidfmTqtwquj4hMEwdjshYYgMbOrPzb9a0M3ZgNa0JMoZeFC6bxZvO8yr8ozS6ix2SDz0+mvryPeBs2TFE+w==}
 
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
@@ -6761,8 +6755,6 @@ snapshots:
       sax: 1.4.1
 
   system-architecture@0.1.0: {}
-
-  tailwindcss@4.1.13: {}
 
   tar-stream@3.1.7:
     dependencies:
