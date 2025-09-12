@@ -6,9 +6,14 @@ export const GET: RequestHandler = async ({ platform, url }) => {
     return new Response('GitHub client ID not configured', { status: 500 });
   }
 
+  const clientId = await env.GITHUB_CLIENT_ID.get();
+  if (!clientId) {
+    return new Response('GitHub client ID not found', { status: 500 });
+  }
+
   const state = crypto.randomUUID();
   const params = new URLSearchParams({
-    client_id: env.GITHUB_CLIENT_ID,
+    client_id: clientId,
     scope: 'read:user user:email',
     state,
     redirect_uri: new URL('/api/callback', url).toString()

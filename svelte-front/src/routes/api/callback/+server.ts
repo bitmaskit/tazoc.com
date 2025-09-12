@@ -34,6 +34,13 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
     return new Response('Server configuration error', { status: 500 });
   }
 
+  const clientId = await env.GITHUB_CLIENT_ID.get();
+  const clientSecret = await env.GITHUB_CLIENT_SECRET.get();
+  
+  if (!clientId || !clientSecret) {
+    return new Response('GitHub credentials not found', { status: 500 });
+  }
+
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   
@@ -57,8 +64,8 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
         Accept: 'application/json'
       },
       body: JSON.stringify({
-        client_id: env.GITHUB_CLIENT_ID,
-        client_secret: env.GITHUB_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         code,
         redirect_uri: redirectUri,
         state
