@@ -49,6 +49,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
 
   try {
     // Exchange code for access token
+    const redirectUri = new URL('/api/callback', url).toString();
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
@@ -58,7 +59,9 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
       body: JSON.stringify({
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
-        code
+        code,
+        redirect_uri: redirectUri,
+        state
       })
     });
 

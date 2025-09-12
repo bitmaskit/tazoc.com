@@ -9,7 +9,7 @@ export const GET: RequestHandler = async ({ platform, url }) => {
   const state = crypto.randomUUID();
   const params = new URLSearchParams({
     client_id: env.GITHUB_CLIENT_ID,
-    scope: 'user:email',
+    scope: 'read:user user:email',
     state,
     redirect_uri: new URL('/api/callback', url).toString()
   });
