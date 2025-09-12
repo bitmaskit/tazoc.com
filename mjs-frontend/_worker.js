@@ -68,13 +68,8 @@ app.get('/api/callback', async (c) => {
 	await c.env.SESSIONS.put(sid, JSON.stringify({ user: ghUser, token: access_token }), { expirationTtl: SESSION_TTL });
 
 	// clear one-time state + set session cookie
-	c.header(
-		'Set-Cookie',
-		[
-			cookie(COOKIE_STATE, '', { expires: new Date(0), path: '/' }),
-			cookie(COOKIE_SESSION, sid, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: SESSION_TTL }),
-		].join(', '),
-	);
+	c.header('Set-Cookie', cookie(COOKIE_STATE, '', { expires: new Date(0), path: '/' }));
+	c.header('Set-Cookie', cookie(COOKIE_SESSION, sid, { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAge: SESSION_TTL }));
 	return c.redirect('/');
 });
 
