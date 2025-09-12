@@ -3,10 +3,10 @@
 
     let { open = false, onClose } = $props();
 
-    let email = "";
-    let password = "";
-    let rememberMe = false;
-    let loading = false;
+    let email = $state("");
+    let password = $state("");
+    let rememberMe = $state(false);
+    let loading = $state(false);
 
     function handleClose() {
         onClose?.();
@@ -66,6 +66,9 @@
             class="fixed inset-0 bg-black/20 backdrop-blur-md transition-opacity"
             onclick={handleOverlayClick}
             onkeydown={(e) => e.key === "Escape" && handleClose()}
+            role="button"
+            tabindex="0"
+            aria-label="Close modal"
         ></div>
 
         <!-- Modal container -->
@@ -209,12 +212,12 @@
                                     </div>
 
                                     <div class="text-sm/6">
-                                        <a
-                                            href="#"
+                                        <button
+                                            type="button"
                                             class="font-semibold text-indigo-400 hover:text-indigo-300"
                                         >
                                             Forgot password?
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
 

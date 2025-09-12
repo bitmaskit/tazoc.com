@@ -7,10 +7,10 @@
 	const authState = auth;
 	const linksState = links;
 
-	let sidebarOpen = false;
-	let urlInput = '';
-	let isShortening = false;
-	let searchQuery = '';
+	let sidebarOpen = $state(false);
+	let urlInput = $state('');
+	let isShortening = $state(false);
+	let searchQuery = $state('');
 
 	// Redirect if not authenticated
 	$effect(() => {
@@ -51,12 +51,12 @@
 		auth.logout();
 	}
 
-	$: filteredLinks = searchQuery 
+	const filteredLinks = $derived(searchQuery 
 		? $linksState.list.filter(link => 
 			link.originalUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			link.shortCode.toLowerCase().includes(searchQuery.toLowerCase())
 		)
-		: $linksState.list;
+		: $linksState.list);
 </script>
 
 {#if $authState.isLoading}
@@ -83,53 +83,53 @@
 								<li>
 									<ul role="list" class="-mx-2 space-y-1">
 										<li>
-											<a href="#" class="bg-white/5 text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="bg-white/5 text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
 												</svg>
 												Dashboard
-											</a>
+											</button>
 										</li>
 										<li>
-											<a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
 												</svg>
 												Team
-											</a>
+											</button>
 										</li>
 										<li>
-											<a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
 												</svg>
 												Projects
-											</a>
+											</button>
 										</li>
 										<li>
-											<a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5" />
 												</svg>
 												Calendar
-											</a>
+											</button>
 										</li>
 										<li>
-											<a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 0014.25 8.25h-1.875" />
 												</svg>
 												Documents
-											</a>
+											</button>
 										</li>
 										<li>
-											<a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+											<button type="button" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold w-full text-left">
 												<svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
 													<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
 												</svg>
 												About
-											</a>
+											</button>
 										</li>
 									</ul>
 								</li>
@@ -137,7 +137,7 @@
 						</li>
 						<li class="-mx-6 mt-auto">
 							<button 
-								on:click={handleLogout}
+								onclick={handleLogout}
 								class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
 							>
 								{#if $authState.user?.avatar_url}
@@ -163,7 +163,7 @@
 				<div class="fixed inset-0 flex">
 					<div class="relative mr-16 flex w-full max-w-xs flex-1">
 						<div class="absolute left-full top-0 flex w-16 justify-center pt-5">
-							<button type="button" class="-m-2.5 p-2.5" on:click={toggleSidebar}>
+							<button type="button" class="-m-2.5 p-2.5" onclick={toggleSidebar}>
 								<span class="sr-only">Close sidebar</span>
 								<svg class="size-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -179,18 +179,18 @@
 									<li>
 										<ul role="list" class="-mx-2 space-y-1">
 											<li>
-												<a href="#" class="bg-white/5 text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+												<button type="button" class="bg-white/5 text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
 													<svg class="text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
 														<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
 													</svg>
 													Dashboard
-												</a>
+												</button>
 											</li>
 										</ul>
 									</li>
 									<li class="-mx-6 mt-auto">
 										<button 
-											on:click={handleLogout}
+											onclick={handleLogout}
 											class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
 										>
 											{#if $authState.user?.avatar_url}
@@ -217,7 +217,7 @@
 			<button
 				type="button"
 				class="-m-2.5 p-2.5 text-gray-400 hover:text-white lg:hidden"
-				on:click={toggleSidebar}
+				onclick={toggleSidebar}
 			>
 				<span class="sr-only">Open sidebar</span>
 				<svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -251,7 +251,7 @@
 
 				<!-- URL Shortening Form -->
 				<div class="mt-8">
-					<form on:submit={handleShorten} class="flex flex-col sm:flex-row gap-4">
+					<form onsubmit={handleShorten} class="flex flex-col sm:flex-row gap-4">
 						<div class="flex-1">
 							<label for="url-input" class="sr-only">URL to shorten</label>
 							<input
@@ -338,9 +338,10 @@
 														/{link.shortCode}
 													</code>
 													<button
-														on:click={() => navigator.clipboard.writeText(`${window.location.origin}/${link.shortCode}`)}
+														onclick={() => navigator.clipboard.writeText(`${window.location.origin}/${link.shortCode}`)}
 														class="ml-2 text-gray-400 hover:text-white"
 														title="Copy to clipboard"
+														aria-label="Copy short URL to clipboard"
 													>
 														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -361,7 +362,7 @@
 											</td>
 											<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
 												<button
-													on:click={() => handleDelete(link.shortCode)}
+													onclick={() => handleDelete(link.shortCode)}
 													class="text-red-400 hover:text-red-300"
 												>
 													Delete

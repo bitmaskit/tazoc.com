@@ -4,7 +4,7 @@
 	import AuthModal from '$lib/components/AuthModal.svelte';
 
 	const authState = auth;
-	let showAuthModal = false;
+	let showAuthModal = $state(false);
 
 	function openAuthModal() {
 		showAuthModal = true;
@@ -50,7 +50,7 @@
 					<a href="#about" class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">About</a>
 				</div>
 				<div class="hidden lg:flex lg:flex-1 lg:justify-end">
-					<button on:click={openAuthModal} class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">
+					<button onclick={openAuthModal} class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">
 						Sign in <span aria-hidden="true">&rarr;</span>
 					</button>
 				</div>
@@ -113,7 +113,7 @@
 										</div>
 										<button
 											type="button"
-											on:click={openAuthModal}
+											onclick={openAuthModal}
 											class="rounded-md bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors whitespace-nowrap"
 										>
 											Get started for free
