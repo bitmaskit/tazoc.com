@@ -1,27 +1,465 @@
-<!-- public/index.html (links Tailwind v4-built CSS) -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>GitHub OAuth (Hono + Workers)</title>
+  <title>LinkShort - URL Shortener</title>
   <link href="/dist/styles.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen grid place-items-center">
-  <div class="bg-white shadow rounded p-8 w-full max-w-md text-center">
-    <h1 class="text-2xl font-bold mb-6">GitHub OAuth Demo</h1>
-    <div id="status" class="text-gray-500">Loading…</div>
-
-    <div id="authed" class="hidden">
-      <img id="avatar" class="w-16 h-16 rounded-full mx-auto mb-3" alt="avatar"/>
-      <p id="welcome" class="mb-4"></p>
-      <button id="logout" class="px-4 py-2 rounded bg-red-600 text-white">Logout</button>
-    </div>
-
-    <div id="anon" class="hidden">
-      <button id="login" class="px-4 py-2 rounded bg-black text-white">Login with GitHub</button>
+<body class="bg-gray-900">
+  <!-- Loading Screen -->
+  <div id="loading" class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+      <p class="text-lg font-medium text-white">Loading LinkShort...</p>
     </div>
   </div>
+
+  <!-- Anonymous Landing Page -->
+  <div id="landing" class="hidden">
+    <!-- Header -->
+    <header class="absolute inset-x-0 top-0 z-50">
+      <nav class="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
+        <div class="flex lg:flex-1">
+          <a href="/" class="-m-1.5 p-1.5">
+            <span class="sr-only">LinkShort</span>
+            <div class="h-8 w-auto text-indigo-400 font-bold text-xl">
+              LinkShort
+            </div>
+          </a>
+        </div>
+        <div class="hidden lg:flex lg:gap-x-12">
+          <a href="#features" class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">Features</a>
+          <a href="#pricing" class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">Pricing</a>
+          <a href="#about" class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">About</a>
+        </div>
+        <div class="hidden lg:flex lg:flex-1 lg:justify-end">
+          <button id="login-btn-header" class="text-sm/6 font-semibold text-white hover:text-indigo-400 transition-colors">
+            Sign in <span aria-hidden="true">&rarr;</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="isolate">
+      <!-- Hero section -->
+      <div class="relative pt-14">
+        <div
+          class="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
+          aria-hidden="true"
+        >
+          <div
+            class="relative left-[calc(50%-11rem)] aspect-1155/678 w-144.5 -translate-x-1/2 rotate-30 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-20 sm:left-[calc(50%-30rem)] sm:w-288.75"
+            style="
+              clip-path: polygon(
+                74.1% 44.1%,
+                100% 61.6%,
+                97.5% 26.9%,
+                85.5% 0.1%,
+                80.7% 2%,
+                72.5% 32.5%,
+                60.2% 62.4%,
+                52.4% 68.1%,
+                47.5% 58.3%,
+                45.2% 34.5%,
+                27.5% 76.7%,
+                0.1% 64.9%,
+                17.9% 100%,
+                27.6% 76.8%,
+                76.1% 97.7%,
+                74.1% 44.1%
+              );
+            "
+          ></div>
+        </div>
+        <div class="py-24 sm:py-32 lg:pb-40">
+          <div class="mx-auto max-w-7xl px-6 lg:px-8">
+            <div class="mx-auto max-w-2xl text-center">
+              <h1 class="text-5xl font-semibold tracking-tight text-balance text-white sm:text-7xl">
+                Shorten your links, expand your reach
+              </h1>
+              <p class="mt-8 text-lg font-medium text-pretty text-gray-400 sm:text-xl/8">
+                Transform long, complex URLs into short, memorable links. Track clicks, analyze performance, and boost your online presence.
+              </p>
+              
+              <!-- URL Input Form -->
+              <div class="mt-10 mx-auto max-w-xl">
+                <!-- Show placeholder form for non-authenticated users -->
+                <div>
+                  <form class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1">
+                      <input
+                        type="url"
+                        disabled
+                        placeholder="https://your-long-url.com/very/long/path"
+                        class="w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed sm:text-sm/6"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      id="login-btn"
+                      class="rounded-md bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors whitespace-nowrap"
+                    >
+                      Get started for free
+                    </button>
+                  </form>
+                  <p class="mt-3 text-sm text-gray-500">
+                    No sign-up required • Free forever • Unlimited short links
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Feature Preview Cards -->
+            <div id="features" class="mt-16 flow-root sm:mt-24">
+              <div class="grid grid-cols-1 gap-6 sm:grid-cols-3 lg:gap-8">
+                <div class="rounded-xl bg-white/5 p-6 ring-1 ring-white/10">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                      <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                      </svg>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-lg font-medium text-white">Instant Shortening</h3>
+                      <p class="text-sm text-gray-400 mt-1">Create short links in seconds</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="rounded-xl bg-white/5 p-6 ring-1 ring-white/10">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                      <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                      </svg>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-lg font-medium text-white">Analytics</h3>
+                      <p class="text-sm text-gray-400 mt-1">Track clicks and performance</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="rounded-xl bg-white/5 p-6 ring-1 ring-white/10">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                      <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.623 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                      </svg>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-lg font-medium text-white">Secure & Reliable</h3>
+                      <p class="text-sm text-gray-400 mt-1">Enterprise-grade security</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
+          aria-hidden="true"
+        >
+          <div
+            class="relative left-[calc(50%+3rem)] aspect-1155/678 w-144.5 -translate-x-1/2 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-20 sm:left-[calc(50%+36rem)] sm:w-288.75"
+            style="
+              clip-path: polygon(
+                74.1% 44.1%,
+                100% 61.6%,
+                97.5% 26.9%,
+                85.5% 0.1%,
+                80.7% 2%,
+                72.5% 32.5%,
+                60.2% 62.4%,
+                52.4% 68.1%,
+                47.5% 58.3%,
+                45.2% 34.5%,
+                27.5% 76.7%,
+                0.1% 64.9%,
+                17.9% 100%,
+                27.6% 76.8%,
+                76.1% 97.7%,
+                74.1% 44.1%
+              );
+            "
+          ></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Authenticated Dashboard with Sidebar -->
+  <div id="dashboard" class="hidden">
+    <!-- Mobile sidebar backdrop -->
+    <div id="sidebar-backdrop" class="hidden relative z-50 lg:hidden">
+      <div class="fixed inset-0 bg-gray-900/80"></div>
+    </div>
+
+    <!-- Static sidebar for desktop -->
+    <div class="hidden bg-gray-900 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+      <div class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-white/10 bg-black/10 px-6">
+        <div class="flex h-16 shrink-0 items-center">
+          <div class="h-8 w-auto text-indigo-400 font-bold text-xl">LinkShort</div>
+        </div>
+        <nav class="flex flex-1 flex-col">
+          <ul role="list" class="flex flex-1 flex-col gap-y-7">
+            <li>
+              <ul role="list" class="flex flex-1 flex-col gap-y-7">
+                <li>
+                  <ul role="list" class="-mx-2 space-y-1">
+                    <li>
+                      <a href="#" class="bg-white/5 text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        Dashboard
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                        </svg>
+                        Team
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                        Projects
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5" />
+                        </svg>
+                        Calendar
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5A3.375 3.375 0 0014.25 8.25h-1.875" />
+                        </svg>
+                        Documents
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="text-gray-400 hover:bg-white/5 hover:text-white group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold">
+                        <svg class="text-gray-400 group-hover:text-white size-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                        </svg>
+                        About
+                      </a>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </li>
+            <li class="-mx-6 mt-auto">
+              <div class="flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5">
+                <img
+                  id="user-avatar-sidebar"
+                  class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
+                  src=""
+                  alt=""
+                />
+                <span class="sr-only">Your profile</span>
+                <span id="user-name-sidebar" aria-hidden="true"></span>
+              </div>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Mobile header -->
+    <div class="sticky top-0 z-40 flex items-center gap-x-6 bg-gray-900 px-4 py-4 after:pointer-events-none after:absolute after:inset-0 after:border-b after:border-white/10 after:bg-black/10 sm:px-6 lg:hidden">
+      <button
+        type="button"
+        id="mobile-menu-btn"
+        class="-m-2.5 p-2.5 text-gray-400 hover:text-white lg:hidden"
+      >
+        <span class="sr-only">Open sidebar</span>
+        <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+      <div class="flex-1 text-sm/6 font-semibold text-white">
+        Dashboard
+      </div>
+      <div class="flex items-center gap-x-4">
+        <img
+          id="user-avatar-mobile"
+          class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
+          src=""
+          alt=""
+        />
+        <button id="logout-btn-mobile" class="text-xs text-red-300 hover:text-red-200">Logout</button>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="py-10 lg:pl-72">
+      <div class="px-4 sm:px-6 lg:px-8">
+        <div class="mb-8">
+          <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+          
+          <!-- URL Shortener Form -->
+          <div class="mb-6">
+            <div class="bg-white/5 backdrop-blur-sm rounded-lg p-6 ring-1 ring-white/10">
+              <h2 class="text-lg font-semibold text-white mb-4">Shorten URL</h2>
+              
+              <form id="shorten-form" class="space-y-4">
+                <div>
+                  <label for="url-input" class="block text-sm font-medium text-gray-300 mb-2">
+                    Enter URL to shorten
+                  </label>
+                  <div class="relative">
+                    <input
+                      id="url-input"
+                      type="url"
+                      placeholder="https://example.com/very/long/url"
+                      class="w-full rounded-md border-0 px-4 py-3 bg-white/10 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-400 sm:text-sm/6"
+                    />
+                    <div id="url-loading" class="hidden absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <p id="url-error" class="mt-2 text-sm text-red-400 hidden"></p>
+                </div>
+                
+                <button
+                  type="submit"
+                  id="shorten-btn"
+                  class="w-full rounded-md bg-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+                >
+                  Shorten URL
+                </button>
+              </form>
+
+              <!-- Success Result -->
+              <div id="success-result" class="mt-6 p-4 bg-green-900/20 border border-green-500/20 rounded-md hidden">
+                <div class="flex items-start">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L7.53 10.53a.75.75 0 00-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3 flex-1">
+                    <h3 class="text-sm font-medium text-green-400">URL Shortened Successfully!</h3>
+                    <div class="mt-2">
+                      <p class="text-sm text-gray-300 mb-2">Your shortened URL:</p>
+                      <div class="flex items-center space-x-2 bg-gray-800/50 rounded-md p-3">
+                        <code id="short-url" class="flex-1 text-sm text-white font-mono break-all"></code>
+                        <button
+                          id="copy-btn"
+                          class="flex-shrink-0 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded transition-colors text-indigo-300 bg-indigo-900/20 hover:bg-indigo-900/30"
+                        >
+                          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.375a2.25 2.25 0 01-2.25-2.25V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                          </svg>
+                          Copy
+                        </button>
+                      </div>
+                      <p id="original-url" class="text-xs text-gray-400 mt-2"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Error Display -->
+              <div id="error-result" class="mt-4 p-4 bg-red-900/20 border border-red-500/20 rounded-md hidden">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-400">Error</h3>
+                    <p id="error-message" class="mt-1 text-sm text-red-300"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Link Management Dashboard -->
+          <div class="mb-6">
+            <div class="bg-white/5 backdrop-blur-sm rounded-lg p-6 ring-1 ring-white/10">
+              <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold text-white">Your Links</h2>
+                <button
+                  id="refresh-links"
+                  class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-300 bg-indigo-900/20 hover:bg-indigo-900/30 transition-colors"
+                >
+                  <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+
+              <!-- Search and Filter Controls -->
+              <div class="mb-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:space-x-4">
+                <div class="flex-1">
+                  <label for="search-links" class="sr-only">Search links</label>
+                  <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                    <input
+                      id="search-links"
+                      type="text"
+                      placeholder="Search by URL or short code..."
+                      class="block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md leading-5 bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Links List -->
+              <div id="links-list">
+                <!-- Loading state -->
+                <div id="links-loading" class="text-center py-12">
+                  <svg class="animate-spin mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p class="mt-2 text-sm text-gray-400">Loading your links...</p>
+                </div>
+                
+                <!-- Empty state -->
+                <div id="links-empty" class="hidden text-center py-12">
+                  <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
+                  <h3 class="mt-2 text-sm font-medium text-gray-300">No links yet</h3>
+                  <p class="mt-1 text-sm text-gray-400">Start by shortening your first URL above.</p>
+                </div>
+
+                <!-- Links container -->
+                <div id="links-container" class="space-y-4 hidden"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
   <script type="module" src="/src/main.mjs"></script>
 </body>
 </html>
