@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"deploy": "npm run build:css && wrangler deploy",
+		"deploy": "pnpm run build:css && npx wrangler deploy",
 		"dev:css": "npx @tailwindcss/cli -i ./public/styles.css -o ./public/dist/styles.css --watch",
 		"build:css": "npx @tailwindcss/cli -i ./public/styles.css -o ./public/dist/styles.css --minify",
 		"dev": "wrangler dev"
