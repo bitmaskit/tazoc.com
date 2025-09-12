@@ -29,7 +29,9 @@ app.get('/api/callback', async (c) => {
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');
 	const cookies = parseCookies(c.req.header('Cookie') || '');
-	if (!code || !state || cookies[COOKIE_STATE] !== state) return c.text('OAuth validation failed', 400);
+	if (!code || !state || cookies[COOKIE_STATE] !== state) {
+		return c.text(`OAuth validation failed. Code: ${!!code}, State: ${!!state}, Cookie State: ${cookies[COOKIE_STATE]}, URL State: ${state}`, 400);
+	}
 
 	const redirectUri = new URL('/api/callback', c.req.url).toString();
 	// in /api/login handler before building the URL
