@@ -11,6 +11,7 @@
 	let urlInput = $state('');
 	let isShortening = $state(false);
 	let searchQuery = $state('');
+	let userDropdownOpen = $state(false);
 
 	// Redirect if not authenticated
 	$effect(() => {
@@ -26,8 +27,26 @@
 		}
 	});
 
+	// Close dropdown when clicking outside
+	$effect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			if (userDropdownOpen && !(event.target as Element)?.closest('.relative')) {
+				userDropdownOpen = false;
+			}
+		}
+
+		if (userDropdownOpen) {
+			document.addEventListener('click', handleClickOutside);
+			return () => document.removeEventListener('click', handleClickOutside);
+		}
+	});
+
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
+	}
+
+	function toggleUserDropdown() {
+		userDropdownOpen = !userDropdownOpen;
 	}
 
 	async function handleShorten(e: Event) {
@@ -137,20 +156,45 @@
 							</ul>
 						</li>
 						<li class="-mx-6 mt-auto">
-							<button 
-								onclick={handleLogout}
-								class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
-							>
-								{#if $authState.user?.avatar_url}
-									<img
-										class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
-										src={$authState.user.avatar_url}
-										alt={$authState.user.name || $authState.user.login}
-									/>
+							<div class="relative">
+								<button 
+									onclick={toggleUserDropdown}
+									class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
+									aria-expanded={userDropdownOpen}
+								>
+									{#if $authState.user?.avatar_url}
+										<img
+											class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
+											src={$authState.user.avatar_url}
+											alt={$authState.user.name || $authState.user.login}
+										/>
+									{/if}
+									<span class="sr-only">Your profile</span>
+									<span aria-hidden="true">{$authState.user?.name || $authState.user?.login}</span>
+									<svg class="ml-auto size-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+										<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+									</svg>
+								</button>
+
+								{#if userDropdownOpen}
+									<div class="absolute left-0 bottom-full w-full z-10 mb-1 origin-bottom-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+										<button
+											onclick={() => {/* TODO: Navigate to profile */}}
+											class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+											role="menuitem"
+										>
+											Your profile
+										</button>
+										<button
+											onclick={() => { userDropdownOpen = false; handleLogout(); }}
+											class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+											role="menuitem"
+										>
+											Sign out
+										</button>
+									</div>
 								{/if}
-								<span class="sr-only">Your profile</span>
-								<span aria-hidden="true">{$authState.user?.name || $authState.user?.login}</span>
-							</button>
+							</div>
 						</li>
 					</ul>
 				</nav>
@@ -190,20 +234,45 @@
 										</ul>
 									</li>
 									<li class="-mx-6 mt-auto">
-										<button 
-											onclick={handleLogout}
-											class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
-										>
-											{#if $authState.user?.avatar_url}
-												<img
-													class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
-													src={$authState.user.avatar_url}
-													alt={$authState.user.name || $authState.user.login}
-												/>
+										<div class="relative">
+											<button 
+												onclick={toggleUserDropdown}
+												class="w-full flex items-center gap-x-4 px-6 py-3 text-sm/6 font-semibold text-white hover:bg-white/5"
+												aria-expanded={userDropdownOpen}
+											>
+												{#if $authState.user?.avatar_url}
+													<img
+														class="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
+														src={$authState.user.avatar_url}
+														alt={$authState.user.name || $authState.user.login}
+													/>
+												{/if}
+												<span class="sr-only">Your profile</span>
+												<span aria-hidden="true">{$authState.user?.name || $authState.user?.login}</span>
+												<svg class="ml-auto size-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+													<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+												</svg>
+											</button>
+
+											{#if userDropdownOpen}
+												<div class="absolute left-0 bottom-full w-full z-10 mb-1 origin-bottom-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+													<button
+														onclick={() => {/* TODO: Navigate to profile */}}
+														class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+														role="menuitem"
+													>
+														Your profile
+													</button>
+													<button
+														onclick={() => { userDropdownOpen = false; sidebarOpen = false; handleLogout(); }}
+														class="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+														role="menuitem"
+													>
+														Sign out
+													</button>
+												</div>
 											{/if}
-											<span class="sr-only">Your profile</span>
-											<span aria-hidden="true">{$authState.user?.name || $authState.user?.login}</span>
-										</button>
+										</div>
 									</li>
 								</ul>
 							</nav>
