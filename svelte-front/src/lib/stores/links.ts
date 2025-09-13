@@ -79,7 +79,7 @@ const createLinksStore = () => {
       try {
         update(state => ({ ...state, isLoading: true }));
         
-        const response = await fetch('https://shortener.valio.workers.dev/links', {
+        const response = await fetch('/api/links', {
           credentials: 'include',
           headers: {
             'X-User-ID': userId
@@ -117,7 +117,7 @@ const createLinksStore = () => {
       if (!browser || !userId) return null;
       
       try {
-        const response = await fetch('https://shortener.valio.workers.dev/shorten', {
+        const response = await fetch('/api/shorten', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ const createLinksStore = () => {
       if (!browser || !userId) return;
       
       try {
-        const response = await fetch(`https://shortener.valio.workers.dev/links/${shortCode}`, {
+        const response = await fetch(`/api/links/${shortCode}`, {
           method: 'DELETE',
           credentials: 'include',
           headers: {

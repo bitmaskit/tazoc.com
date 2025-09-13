@@ -41,5 +41,9 @@
       "binding": "RESOLVER",
       "service": "resolver",
     },
+    {
+      "binding": "SHORTENER",
+      "service": "shortener",
+    },
   ],
 }
