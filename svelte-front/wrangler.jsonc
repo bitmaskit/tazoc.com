@@ -24,7 +24,7 @@
   "routes": [
     {
       "custom_domain": true,
-      "pattern": "https://val.io/",
+      "pattern": "val.io",
     },
   ],
   "assets": {
