@@ -71,6 +71,23 @@
 		auth.logout();
 	}
 
+	function formatDate(dateString: string) {
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+		
+		if (diffDays === 0) {
+			return 'Today';
+		} else if (diffDays === 1) {
+			return 'Yesterday';
+		} else if (diffDays < 7) {
+			return `${diffDays} days ago`;
+		} else {
+			return date.toLocaleDateString();
+		}
+	}
+
 	const filteredLinks = $derived(searchQuery 
 		? $linksState.links.filter(link => 
 			link.originalUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -309,141 +326,184 @@
 		</div>
 
 		<!-- Main content -->
-		<main class="lg:pl-72">
-			<div class="px-4 sm:px-6 lg:px-8 py-10">
-				<!-- Page header -->
-				<div class="sm:flex sm:items-center">
-					<div class="sm:flex-auto">
-						<h1 class="text-base/7 font-semibold text-white">URL Shortener</h1>
-						<p class="mt-2 text-sm text-gray-400">Create and manage your shortened URLs</p>
-					</div>
-				</div>
-
-				<!-- URL Shortening Form -->
-				<div class="mt-8">
-					<form onsubmit={handleShorten} class="flex flex-col sm:flex-row gap-4">
-						<div class="flex-1">
-							<label for="url-input" class="sr-only">URL to shorten</label>
-							<input
-								id="url-input"
-								bind:value={urlInput}
-								type="url"
-								required
-								placeholder="https://your-long-url.com/very/long/path"
-								class="w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm/6"
-							/>
-						</div>
-						<button
-							type="submit"
-							disabled={isShortening}
-							class="rounded-md bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{isShortening ? 'Shortening...' : 'Shorten URL'}
-						</button>
-					</form>
-				</div>
-
-				<!-- Links Management -->
-				<div class="mt-8">
-					<div class="sm:flex sm:items-center mb-4">
-						<div class="sm:flex-auto">
-							<h2 class="text-base/7 font-semibold text-white">Your Links</h2>
-							<p class="mt-1 text-sm text-gray-400">
-								{$linksState.links.length} link{$linksState.links.length !== 1 ? 's' : ''}
-							</p>
-						</div>
-						<div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-							<input
-								bind:value={searchQuery}
-								type="text"
-								placeholder="Search links..."
-								class="rounded-md border-0 px-3 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm/6"
-							/>
+		<main class="py-10 lg:pl-72">
+			<div class="px-4 sm:px-6 lg:px-8">
+				<div class="mb-8">
+					<h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+					
+					<!-- URL Shortener Form -->
+					<div class="mb-6">
+						<div class="bg-white/5 backdrop-blur-sm rounded-lg p-6 ring-1 ring-white/10">
+							<h2 class="text-lg font-semibold text-white mb-4">Shorten URL</h2>
+							
+							<form onsubmit={handleShorten} class="space-y-4">
+								<div>
+									<label for="url-input" class="block text-sm font-medium text-gray-300 mb-2">
+										Enter URL to shorten
+									</label>
+									<div class="relative">
+										<input
+											id="url-input"
+											bind:value={urlInput}
+											type="url"
+											required
+											placeholder="https://example.com/very/long/url"
+											class="w-full rounded-md border-0 px-4 py-3 bg-white/10 text-white shadow-sm ring-1 ring-inset ring-white/20 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-400 sm:text-sm/6"
+										/>
+										{#if isShortening}
+											<div class="absolute inset-y-0 right-0 flex items-center pr-3">
+												<svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+													<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+													<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+												</svg>
+											</div>
+										{/if}
+									</div>
+								</div>
+								
+								<button
+									type="submit"
+									disabled={isShortening}
+									class="w-full rounded-md bg-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+								>
+									{isShortening ? 'Shortening...' : 'Shorten URL'}
+								</button>
+							</form>
 						</div>
 					</div>
+					
+					<!-- Link Management Dashboard -->
+					<div class="mb-6">
+						<div class="bg-white/5 backdrop-blur-sm rounded-lg p-6 ring-1 ring-white/10">
+							<div class="flex items-center justify-between mb-6">
+								<h2 class="text-lg font-semibold text-white">Your Links</h2>
+								<button
+									onclick={() => links.loadLinks($authState.user?.login)}
+									class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-300 bg-indigo-900/20 hover:bg-indigo-900/30 transition-colors"
+								>
+									<svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+									</svg>
+									Refresh
+								</button>
+							</div>
 
-					{#if $linksState.isLoading}
-						<div class="text-center py-8">
-							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-2"></div>
-							<p class="text-sm text-gray-400">Loading links...</p>
-						</div>
-					{:else if filteredLinks.length === 0}
-						<div class="text-center py-8">
-							<svg class="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-							</svg>
-							<h3 class="mt-2 text-sm font-medium text-white">No links found</h3>
-							<p class="mt-1 text-sm text-gray-400">
-								{searchQuery ? 'Try adjusting your search query.' : 'Get started by creating a short link.'}
-							</p>
-						</div>
-					{:else}
-						<div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-							<table class="min-w-full divide-y divide-gray-700">
-								<thead class="bg-gray-800">
-									<tr>
-										<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-											Short URL
-										</th>
-										<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-											Original URL
-										</th>
-										<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-											Clicks
-										</th>
-										<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-											Created
-										</th>
-										<th scope="col" class="relative px-6 py-3">
-											<span class="sr-only">Actions</span>
-										</th>
-									</tr>
-								</thead>
-								<tbody class="bg-gray-900 divide-y divide-gray-700">
+							<!-- Search and Filter Controls -->
+							<div class="mb-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:space-x-4">
+								<div class="flex-1">
+									<label for="search-links" class="sr-only">Search links</label>
+									<div class="relative">
+										<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+											<svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+											</svg>
+										</div>
+										<input
+											bind:value={searchQuery}
+											type="text"
+											placeholder="Search by URL or short code..."
+											class="block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md leading-5 bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+										/>
+									</div>
+								</div>
+							</div>
+
+							<!-- Links List -->
+							{#if $linksState.isLoading}
+								<!-- Loading state -->
+								<div class="text-center py-12">
+									<svg class="animate-spin mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									<p class="mt-2 text-sm text-gray-400">Loading your links...</p>
+								</div>
+							{:else if filteredLinks.length === 0}
+								<!-- Empty state -->
+								<div class="text-center py-12">
+									<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+									</svg>
+									<h3 class="mt-2 text-sm font-medium text-gray-300">
+										{searchQuery ? 'No links found' : 'No links yet'}
+									</h3>
+									<p class="mt-1 text-sm text-gray-400">
+										{searchQuery ? 'Try adjusting your search query.' : 'Start by shortening your first URL above.'}
+									</p>
+								</div>
+							{:else}
+								<!-- Links container -->
+								<div class="space-y-4">
 									{#each filteredLinks as link (link.shortCode)}
-										<tr>
-											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="flex items-center">
-													<code class="text-sm font-mono text-indigo-400">
-														/{link.shortCode}
-													</code>
+										<div class="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50 hover:border-gray-600/50 transition-colors">
+											<div class="flex items-start justify-between">
+												<div class="flex-1 min-w-0">
+													<!-- Short URL -->
+													<div class="flex items-center space-x-2 mb-2">
+														<code class="text-sm font-mono text-indigo-400 bg-indigo-900/20 px-2 py-1 rounded">
+															/{link.shortCode}
+														</code>
+														<button
+															onclick={() => navigator.clipboard.writeText(`${window.location.origin}/${link.shortCode}`)}
+															class="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-gray-400 hover:text-white transition-colors"
+															aria-label="Copy short URL to clipboard"
+														>
+															<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.375a2.25 2.25 0 01-2.25-2.25V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+															</svg>
+														</button>
+													</div>
+													
+													<!-- Original URL -->
+													<p class="text-sm text-gray-300 truncate mb-2" title={link.originalUrl}>
+														{link.originalUrl}
+													</p>
+													
+													<!-- Stats and Meta -->
+													<div class="flex items-center space-x-4 text-xs text-gray-400">
+														<span class="flex items-center">
+															<svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+															</svg>
+															{link.clicks || 0} clicks
+														</span>
+														<span class="flex items-center">
+															<svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5" />
+															</svg>
+															{formatDate(link.createdAt)}
+														</span>
+													</div>
+												</div>
+												
+												<!-- Actions -->
+												<div class="flex items-center space-x-2 ml-4">
 													<button
-														onclick={() => navigator.clipboard.writeText(`${window.location.origin}/${link.shortCode}`)}
-														class="ml-2 text-gray-400 hover:text-white"
-														title="Copy to clipboard"
-														aria-label="Copy short URL to clipboard"
+														onclick={() => {/* TODO: Analytics */}}
+														class="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 transition-colors"
 													>
-														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+														<svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+															<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
 														</svg>
+														Analytics
+													</button>
+													<button
+														onclick={() => handleDelete(link.shortCode)}
+														class="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-red-300 bg-red-900/20 hover:bg-red-900/30 transition-colors"
+													>
+														<svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+															<path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+														</svg>
+														Delete
 													</button>
 												</div>
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="text-sm text-white max-w-xs truncate" title={link.originalUrl}>
-													{link.originalUrl}
-												</div>
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-												{link.clicks || 0}
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-												{new Date(link.createdAt).toLocaleDateString()}
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-												<button
-													onclick={() => handleDelete(link.shortCode)}
-													class="text-red-400 hover:text-red-300"
-												>
-													Delete
-												</button>
-											</td>
-										</tr>
+											</div>
+										</div>
 									{/each}
-								</tbody>
-							</table>
+								</div>
+							{/if}
 						</div>
-					{/if}
+					</div>
 				</div>
 			</div>
 		</main>
