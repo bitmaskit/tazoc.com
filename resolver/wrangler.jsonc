@@ -37,5 +37,4 @@
 			},
 		],
 	},
-	"services": [{ "binding": "FRONTEND", "service": "frontend" }],
 }
