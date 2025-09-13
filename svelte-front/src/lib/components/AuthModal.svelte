@@ -112,7 +112,7 @@
                         <div
                             class="h-10 w-auto text-indigo-400 font-bold text-2xl text-center"
                         >
-                            LinkShort
+                            Val.io
                         </div>
                         <h2
                             class="mt-6 text-center text-2xl/9 font-bold tracking-tight text-white"

@@ -27,7 +27,7 @@
 	<div class="min-h-screen flex items-center justify-center">
 		<div class="text-center">
 			<div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-			<p class="text-lg font-medium text-white">Loading LinkShort...</p>
+			<p class="text-lg font-medium text-white">Loading Val.io...</p>
 		</div>
 	</div>
 {:else if !$authState.isAuthenticated}
@@ -38,9 +38,9 @@
 			<nav class="flex items-center justify-between p-6 lg:px-8" aria-label="Global">
 				<div class="flex lg:flex-1">
 					<a href="/" class="-m-1.5 p-1.5">
-						<span class="sr-only">LinkShort</span>
+						<span class="sr-only">Val.io</span>
 						<div class="h-8 w-auto text-indigo-400 font-bold text-xl">
-							LinkShort
+							Val.io
 						</div>
 					</a>
 				</div>
@@ -363,7 +363,7 @@
 			<div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
 				<div class="xl:grid xl:grid-cols-3 xl:gap-8">
 					<div class="space-y-8">
-						<div class="h-8 w-auto text-indigo-400 font-bold text-xl">LinkShort</div>
+						<div class="h-8 w-auto text-indigo-400 font-bold text-xl">Val.io</div>
 						<p class="text-sm/6 text-gray-300">
 							Transform long, complex URLs into short, memorable links. Track clicks, analyze performance, and boost your online presence.
 						</p>
@@ -445,7 +445,7 @@
 				<div class="mt-16 border-t border-white/10 pt-8 sm:mt-20 lg:mt-24">
 					<div class="flex items-center justify-between">
 						<p class="text-xs/5 text-gray-400">
-							&copy; 2024 LinkShort. All rights reserved.
+							&copy; {new Date().getFullYear()} Val.io. All rights reserved.
 						</p>
 						<p class="text-xs/5 text-gray-500">
 							Built with SvelteKit on Cloudflare Workers

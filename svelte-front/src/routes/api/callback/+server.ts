@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
-        'User-Agent': 'LinkShort'
+        'User-Agent': 'Val.io'
       }
     });
 

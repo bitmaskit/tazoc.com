@@ -14,7 +14,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>LinkShort - URL Shortener</title>
+	<title>Val.io - URL Shortener</title>
 </svelte:head>
 
 <div class="bg-gray-900 min-h-screen">

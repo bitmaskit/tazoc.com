@@ -151,7 +151,7 @@
 	<div class="min-h-screen flex items-center justify-center">
 		<div class="text-center">
 			<div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-			<p class="text-lg font-medium text-white">Loading LinkShort...</p>
+			<p class="text-lg font-medium text-white">Loading Val.io...</p>
 		</div>
 	</div>
 {:else if $authState.isAuthenticated}
@@ -161,7 +161,7 @@
 		<div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
 			<div class="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 after:pointer-events-none after:absolute after:inset-0 after:rounded-r-2xl after:border-r after:border-white/5">
 				<div class="flex h-16 shrink-0 items-center">
-					<div class="h-8 w-auto text-indigo-400 font-bold text-xl">LinkShort</div>
+					<div class="h-8 w-auto text-indigo-400 font-bold text-xl">Val.io</div>
 				</div>
 				<nav class="flex flex-1 flex-col">
 					<ul role="list" class="flex flex-1 flex-col gap-y-7">
@@ -284,7 +284,7 @@
 						</div>
 						<div class="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-2">
 							<div class="flex h-16 shrink-0 items-center">
-								<div class="h-8 w-auto text-indigo-400 font-bold text-xl">LinkShort</div>
+								<div class="h-8 w-auto text-indigo-400 font-bold text-xl">Val.io</div>
 							</div>
 							<nav class="flex flex-1 flex-col">
 								<ul role="list" class="flex flex-1 flex-col gap-y-7">
