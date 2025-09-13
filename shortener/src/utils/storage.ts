@@ -49,7 +49,7 @@ export async function storeInDatabase(linkData: LinkData, db: D1Database): Promi
   const query = `
     INSERT INTO links (short_code, destination, created_at, expires_at, is_active, created_by)
     VALUES (?, ?, ?, ?, ?, ?)
-    RETURNING id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
+    RETURNING id, short_code as shortCode, destination as originalUrl, created_at as createdAt, expires_at as expiresAt, is_active as isActive, click_count as clickCount, created_by as createdBy
   `;
 
   const result = await db.prepare(query)
@@ -229,7 +229,7 @@ export async function getFromCache(shortCode: string, kv: KVNamespace): Promise<
  */
 export async function getFromDatabase(shortCode: string, db: D1Database): Promise<LinkData | null> {
   const query = `
-    SELECT id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
+    SELECT id, short_code as shortCode, destination as originalUrl, created_at as createdAt, expires_at as expiresAt, is_active as isActive, click_count as clickCount, created_by as createdBy
     FROM links 
     WHERE short_code = ? AND is_active = 1
   `;
@@ -360,7 +360,7 @@ export async function getUserLinks(
 
   // Get paginated links
   const linksQuery = `
-    SELECT id, short_code, destination as original_url, created_at, expires_at, is_active, click_count, created_by
+    SELECT id, short_code as shortCode, destination as originalUrl, created_at as createdAt, expires_at as expiresAt, is_active as isActive, click_count as clickCount, created_by as createdBy
     FROM links 
     WHERE created_by = ? AND is_active = 1
     ORDER BY created_at DESC
