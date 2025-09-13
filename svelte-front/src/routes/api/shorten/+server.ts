@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		console.log('Shorten API - Body:', body);
 		console.log('Shorten API - User ID:', userId);
 		
-		const shortenerRequest = new Request('https://shortener/shorten', {
+		const shortenerRequest = new Request('https://val.io/shorten', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

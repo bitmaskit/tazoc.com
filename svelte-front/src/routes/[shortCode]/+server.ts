@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ platform, params, request }) => {
 
   try {
     // Create a request to the resolver's JSON API endpoint
-    const resolverRequest = new Request(`https://resolver.local/api/resolve/${shortCode}`, {
+    const resolverRequest = new Request(`https://val.io/api/resolve/${shortCode}`, {
       method: 'GET',
       headers: request.headers
     });

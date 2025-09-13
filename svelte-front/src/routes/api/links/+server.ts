@@ -54,7 +54,7 @@ export const GET: RequestHandler = async ({ url, platform, request }) => {
 	}
 
 	try {
-		const shortenerRequest = new Request(`https://shortener/links${url.search}`, {
+		const shortenerRequest = new Request(`https://val.io/links${url.search}`, {
 			method: 'GET',
 			headers: {
 				'X-User-ID': userId,

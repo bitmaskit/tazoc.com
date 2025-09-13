@@ -54,7 +54,7 @@ export const DELETE: RequestHandler = async ({ params, platform, request }) => {
 	}
 
 	try {
-		const shortenerRequest = new Request(`https://shortener/links/${params.shortCode}`, {
+		const shortenerRequest = new Request(`https://val.io/links/${params.shortCode}`, {
 			method: 'DELETE',
 			headers: {
 				'X-User-ID': userId,
