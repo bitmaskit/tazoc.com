@@ -26,6 +26,10 @@
       "custom_domain": true,
       "pattern": "val.io",
     },
+    {
+      "pattern": "*.val.io/*",
+      "zone_name": "val.io",
+    },
   ],
   "assets": {
     "binding": "ASSETS",
