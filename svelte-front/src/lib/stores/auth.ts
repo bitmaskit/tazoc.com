@@ -15,6 +15,11 @@ interface AuthState {
   isLoading: boolean;
 }
 
+interface MeResponse {
+  authenticated: boolean;
+  user?: User;
+}
+
 const createAuthStore = () => {
   const { subscribe, set, update } = writable<AuthState>({
     user: null,
@@ -36,7 +41,7 @@ const createAuthStore = () => {
           credentials: 'include'
         });
         
-        const data = await response.json();
+        const data = await response.json() as MeResponse;
         
         if (data.authenticated && data.user) {
           set({

@@ -36,4 +36,10 @@
       "id": "b0429b5a06f74cd58540076caf10e04d",
     },
   ],
+  "services": [
+    {
+      "binding": "RESOLVER",
+      "service": "resolver",
+    },
+  ],
 }

@@ -2,12 +2,56 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 interface Link {
+  id?: number;
   shortCode: string;
   shortUrl: string;
   originalUrl: string;
   createdAt: string;
-  createdBy: string;
-  clicks: number;
+  expiresAt?: string;
+  isActive: boolean;
+  clicks: number; // Frontend uses 'clicks', will transform from API's 'clickCount'
+}
+
+// API Link interface (what the shortener worker returns)
+interface ApiLink {
+  id?: number;
+  shortCode: string;
+  shortUrl: string;
+  originalUrl: string;
+  createdAt: string;
+  expiresAt?: string;
+  isActive: boolean;
+  clickCount: number; // API returns 'clickCount'
+}
+
+// API Response interfaces matching shortener worker responses
+interface ApiLinksResponse {
+  links: ApiLink[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+}
+
+interface ErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  timestamp: string;
+  requestId: string;
+}
+
+interface ApiShortenResponse extends ApiLink {
+  // Inherits all ApiLink properties
+}
+
+// Helper function to transform API link to frontend link
+function transformApiLink(apiLink: ApiLink): Link {
+  return {
+    ...apiLink,
+    clicks: apiLink.clickCount // Transform clickCount to clicks
+  };
 }
 
 interface LinksState {
@@ -29,20 +73,24 @@ const createLinksStore = () => {
     subscribe,
 
     // Load user's links
-    loadLinks: async () => {
-      if (!browser) return;
+    loadLinks: async (userId?: string) => {
+      if (!browser || !userId) return;
       
       try {
         update(state => ({ ...state, isLoading: true }));
         
-        const response = await fetch('/api/links', {
-          credentials: 'include'
+        const response = await fetch('https://shortener.valio.workers.dev/links', {
+          credentials: 'include',
+          headers: {
+            'X-User-ID': userId
+          }
         });
         
-        const data = await response.json();
+        const data = await response.json() as ApiLinksResponse | ErrorResponse;
         
         if (response.ok) {
-          const links = data.links || [];
+          const apiResponse = data as ApiLinksResponse;
+          const links = (apiResponse.links || []).map(transformApiLink);
           update(state => ({
             ...state,
             links,
@@ -50,7 +98,8 @@ const createLinksStore = () => {
             isLoading: false
           }));
         } else {
-          throw new Error(data.error?.message || 'Failed to load links');
+          const errorResponse = data as ErrorResponse;
+          throw new Error(errorResponse.error?.message || 'Failed to load links');
         }
       } catch (error) {
         console.error('Failed to load links:', error);
@@ -64,25 +113,29 @@ const createLinksStore = () => {
     },
 
     // Shorten URL
-    shortenUrl: async (url: string) => {
-      if (!browser) return null;
+    shortenUrl: async (url: string, userId?: string) => {
+      if (!browser || !userId) return null;
       
       try {
-        const response = await fetch('/api/shorten', {
+        const response = await fetch('https://shortener.valio.workers.dev/shorten', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
           },
           credentials: 'include',
           body: JSON.stringify({ url })
         });
         
-        const data = await response.json();
+        const data = await response.json() as ApiShortenResponse | ErrorResponse;
         
         if (response.ok) {
+          const apiResponse = data as ApiShortenResponse;
+          const newLink = transformApiLink(apiResponse);
+          
           // Add new link to the beginning of the list
           update(state => {
-            const newLinks = [data, ...state.links];
+            const newLinks = [newLink, ...state.links];
             return {
               ...state,
               links: newLinks,
@@ -94,9 +147,10 @@ const createLinksStore = () => {
             };
           });
           
-          return data;
+          return newLink;
         } else {
-          throw new Error(data.error?.message || 'Failed to shorten URL');
+          const errorResponse = data as ErrorResponse;
+          throw new Error(errorResponse.error?.message || 'Failed to shorten URL');
         }
       } catch (error) {
         console.error('Failed to shorten URL:', error);
@@ -105,13 +159,16 @@ const createLinksStore = () => {
     },
 
     // Delete link
-    deleteLink: async (shortCode: string) => {
-      if (!browser) return;
+    deleteLink: async (shortCode: string, userId?: string) => {
+      if (!browser || !userId) return;
       
       try {
-        const response = await fetch(`/api/links/${shortCode}`, {
+        const response = await fetch(`https://shortener.valio.workers.dev/links/${shortCode}`, {
           method: 'DELETE',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'X-User-ID': userId
+          }
         });
         
         if (response.ok) {
@@ -130,7 +187,7 @@ const createLinksStore = () => {
             };
           });
         } else {
-          const data = await response.json();
+          const data = await response.json() as ErrorResponse;
           throw new Error(data.error?.message || 'Failed to delete link');
         }
       } catch (error) {

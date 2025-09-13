@@ -2,36 +2,55 @@ export default {
 	async fetch(req, env, ctx): Promise<Response> {
 		const url = new URL(req.url);
 		console.log(`Trying to get: ${url.pathname}`);
+		
+		// Handle root path - when used as service binding, just return not found
 		if (url.pathname === '/') {
-			return env.FRONTEND.fetch(req);
+			return new Response('Not found', { status: 404 });
 		}
-		const shortCode = url.pathname.slice(1);
 
-		let resolvedUrl = await env.URL_CACHE.get(shortCode);
-
-		if (!resolvedUrl) {
-			console.log('Cache miss for shortCode:', shortCode);
-			// Try to get url from D1 Database
-			const result = await env.URL_DB.prepare('SELECT destination FROM links WHERE short_code = ? LIMIT 1').bind(shortCode).first();
-
-			if (result?.destination) {
-				resolvedUrl = result.destination as string;
-
-				if (resolvedUrl) {
-					await env.URL_CACHE.put(shortCode, resolvedUrl, { expirationTtl: 60 * 60 * 24 });
-				}
+		// Handle API-style request for JSON response
+		if (url.pathname.startsWith('/api/resolve/')) {
+			const shortCode = url.pathname.slice(13); // Remove '/api/resolve/'
+			const resolvedUrl = await resolveShortCode(shortCode, env);
+			
+			if (!resolvedUrl) {
+				return new Response(JSON.stringify({ error: 'Short code not found' }), { 
+					status: 404,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
+			
+			// Increment click count asynchronously (fire-and-forget)
+			ctx.waitUntil(incrementClickCount(shortCode, env));
+			
+			return new Response(JSON.stringify({ 
+				shortCode, 
+				url: resolvedUrl,
+				timestamp: new Date().toISOString() 
+			}), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
 		}
+		
+		const shortCode = url.pathname.slice(1);
+		const resolvedUrl = await resolveShortCode(shortCode, env);
 
 		if (!resolvedUrl) {
 			console.log(`Pathname: ${url.pathname}, Short code: ${shortCode}`);
 			return new Response(`Not found: ${shortCode}`, { status: 404 });
 		}
+		
+		// Increment click count asynchronously (fire-and-forget)
+		ctx.waitUntil(incrementClickCount(shortCode, env));
+		
+		// TODO: Re-enable analytics
 		// await env.shortener_analytics.send({
 		// url: req.url,
 		// method: req.method,
 		// headers: Object.fromEntries(req.headers),
 		// });
+		
 		return new Response(null, {
 			status: 302,
 			headers: {
@@ -41,6 +60,59 @@ export default {
 		});
 	},
 } satisfies ExportedHandler<Env, Error>;
+
+// Helper function to resolve short code to URL
+async function resolveShortCode(shortCode: string, env: Env): Promise<string | null> {
+	// Try to get cached data (now includes URL and metadata)
+	let cachedData = await env.URL_CACHE.get(`link:${shortCode}`, 'json') as { 
+		url: string; 
+		cached_at: string;
+		click_count?: number;
+	} | null;
+
+	if (cachedData?.url) {
+		console.log('Cache hit for shortCode:', shortCode);
+		return cachedData.url;
+	}
+
+	console.log('Cache miss for shortCode:', shortCode);
+	// Try to get url from D1 Database
+	const result = await env.URL_DB.prepare('SELECT destination, click_count FROM links WHERE short_code = ? AND is_active = 1 LIMIT 1').bind(shortCode).first();
+
+	if (result?.destination) {
+		const resolvedUrl = result.destination as string;
+		const clickCount = (result.click_count as number) || 0;
+
+		// Cache the data with metadata
+		const cacheData = {
+			url: resolvedUrl,
+			cached_at: new Date().toISOString(),
+			click_count: clickCount
+		};
+
+		// Cache for 24 hours by default
+		await env.URL_CACHE.put(`link:${shortCode}`, JSON.stringify(cacheData), { expirationTtl: 60 * 60 * 24 });
+		
+		return resolvedUrl;
+	}
+
+	return null;
+}
+
+// Helper function to increment click count for a short code
+async function incrementClickCount(shortCode: string, env: Env): Promise<void> {
+	try {
+		// Increment click count in D1 database
+		await env.URL_DB.prepare('UPDATE links SET click_count = click_count + 1, updated_at = CURRENT_TIMESTAMP WHERE short_code = ? AND is_active = 1')
+			.bind(shortCode)
+			.run();
+		
+		console.log(`Incremented click count for ${shortCode}`);
+	} catch (error) {
+		// Don't fail the redirect if click counting fails
+		console.error(`Failed to increment click count for ${shortCode}:`, error);
+	}
+}
 
 /*
 // COMMENTED OUT: Complex resolver implementation with circuit breakers, metrics, etc.

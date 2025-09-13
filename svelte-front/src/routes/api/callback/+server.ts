@@ -1,5 +1,20 @@
 import type { RequestHandler } from './$types';
 
+// GitHub OAuth interfaces
+interface GitHubTokenResponse {
+  access_token: string;
+  token_type: string;
+  scope: string;
+}
+
+interface GitHubUser {
+  id: number;
+  login: string;
+  name: string;
+  avatar_url: string;
+  email?: string;
+}
+
 // Helper functions
 function randomId(bytes = 16): string {
   const a = new Uint8Array(bytes);
@@ -72,7 +87,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
       })
     });
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as GitHubTokenResponse;
     if (!tokenData.access_token) {
       return new Response('Failed to get access token', { status: 400 });
     }
@@ -89,7 +104,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
       return new Response('Failed to get user info', { status: 400 });
     }
 
-    const userData = await userResponse.json();
+    const userData = await userResponse.json() as GitHubUser;
     
     // Create session
     const sessionId = randomId();

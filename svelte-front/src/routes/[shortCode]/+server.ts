@@ -1,58 +1,58 @@
 import type { RequestHandler } from './$types';
-import { error } from '@sveltejs/kit';
 
-export const GET: RequestHandler = async ({ platform, params, url }) => {
+// Interface for resolver response
+interface ResolverResponse {
+  shortCode: string;
+  url: string;
+  timestamp: string;
+}
+
+export const GET: RequestHandler = async ({ platform, params, request }) => {
   const env = platform?.env;
-  if (!env?.SESSIONS) {
-    return new Response('Sessions not configured', { status: 500 });
+  if (!env?.RESOLVER) {
+    return new Response('Resolver service not configured', { status: 500 });
   }
 
   const { shortCode } = params;
-
-  // Skip if this looks like a static asset or API route
-  if (shortCode.includes('.') || shortCode.startsWith('api/') || shortCode.startsWith('_app/')) {
-    error(404, 'Not found');
+  if (!shortCode) {
+    return new Response('Short code is required', { status: 400 });
   }
 
   try {
-    const linkData = await env.SESSIONS.get(`link_${shortCode}`);
-    if (!linkData) {
-      error(404, 'Short URL not found');
-    }
-
-    const link = JSON.parse(linkData);
-
-    // Increment click count
-    link.clicks = (link.clicks || 0) + 1;
-    await env.SESSIONS.put(`link_${shortCode}`, JSON.stringify(link), { 
-      expirationTtl: 30 * 24 * 60 * 60 
+    // Create a request to the resolver's JSON API endpoint
+    const resolverRequest = new Request(`https://dummy.com/api/resolve/${shortCode}`, {
+      method: 'GET',
+      headers: request.headers
     });
-
-    // Also update in user's links list
-    const userLinksKey = `user_links_${link.createdBy}`;
-    const existingLinks = await env.SESSIONS.get(userLinksKey);
-    if (existingLinks) {
-      let userLinks = JSON.parse(existingLinks);
-      userLinks = userLinks.map((userLink: any) => 
-        userLink.shortCode === shortCode 
-          ? { ...userLink, clicks: link.clicks }
-          : userLink
-      );
-      await env.SESSIONS.put(userLinksKey, JSON.stringify(userLinks), { 
-        expirationTtl: 30 * 24 * 60 * 60 
-      });
+    
+    const resolverResponse = await env.RESOLVER.fetch(resolverRequest);
+    
+    if (resolverResponse.status === 404) {
+      return new Response('Short URL not found', { status: 404 });
     }
-
-    // Redirect to original URL
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: link.originalUrl
+    
+    if (resolverResponse.status === 200) {
+      // Resolver returned URL data as JSON
+      const urlData = await resolverResponse.json() as ResolverResponse;
+      if (urlData.url) {
+        // svelte-front now has full control over the redirect
+        // Could add analytics, logging, or other processing here
+        console.log(`Redirecting ${shortCode} to ${urlData.url}`);
+        
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: urlData.url,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          }
+        });
       }
-    });
-
-  } catch (err) {
-    console.error('Error handling redirect:', err);
-    error(500, 'Internal server error');
+    }
+    
+    return new Response('Invalid response from resolver', { status: 500 });
+    
+  } catch (error) {
+    console.error('Error calling resolver:', error);
+    return new Response('Internal server error', { status: 500 });
   }
 };

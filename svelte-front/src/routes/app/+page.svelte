@@ -21,8 +21,8 @@
 
 	// Load user links when authenticated
 	$effect(() => {
-		if (!$authState.isLoading && $authState.isAuthenticated) {
-			links.loadLinks();
+		if (!$authState.isLoading && $authState.isAuthenticated && $authState.user) {
+			links.loadLinks($authState.user.login);
 		}
 	});
 
@@ -32,11 +32,11 @@
 
 	async function handleShorten(e: Event) {
 		e.preventDefault();
-		if (!urlInput.trim() || isShortening) return;
+		if (!urlInput.trim() || isShortening || !$authState.user) return;
 
 		isShortening = true;
 		try {
-			await links.shortenUrl(urlInput.trim());
+			await links.shortenUrl(urlInput.trim(), $authState.user.login);
 			urlInput = '';
 		} finally {
 			isShortening = false;
@@ -44,7 +44,8 @@
 	}
 
 	async function handleDelete(shortCode: string) {
-		await links.deleteLink(shortCode);
+		if (!$authState.user) return;
+		await links.deleteLink(shortCode, $authState.user.login);
 	}
 
 	function handleLogout() {
