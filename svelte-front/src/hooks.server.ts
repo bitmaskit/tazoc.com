@@ -70,6 +70,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (isBlocked(path)) {
     console.log(`🔒 Blocked suspicious request: ${request.method} ${path} from ${clientIP}`);
     
+    // Track blocked request if tracker is available
+    try {
+      (globalThis as any).securityTracker?.trackBlockedRequest(path, clientIP);
+    } catch (e) {
+      // Ignore if tracker not available
+    }
+    
     // Return 404 instead of 403 to not reveal that we're blocking
     return new Response('Not Found', { 
       status: 404,
@@ -83,6 +90,14 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Rate limiting
   if (!checkRateLimit(clientIP)) {
     console.log(`🚫 Rate limit exceeded for ${clientIP}`);
+    
+    // Track rate limit if tracker is available
+    try {
+      (globalThis as any).securityTracker?.trackRateLimit();
+    } catch (e) {
+      // Ignore if tracker not available
+    }
+    
     return new Response('Too Many Requests', { 
       status: 429,
       headers: {

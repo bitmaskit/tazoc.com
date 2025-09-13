@@ -30,8 +30,8 @@ export const GET: RequestHandler = async ({ request, platform }) => {
   });
 };
 
-// Helper function to track blocked requests (called from hooks)
-export function trackBlockedRequest(path: string, ip: string) {
+// Helper functions to track security events (not exported - internal use only)
+function trackBlockedRequest(path: string, ip: string) {
   SECURITY_STATS.blockedRequests++;
   SECURITY_STATS.topBlockedPaths.set(
     path,
@@ -43,6 +43,12 @@ export function trackBlockedRequest(path: string, ip: string) {
   );
 }
 
-export function trackRateLimit() {
+function trackRateLimit() {
   SECURITY_STATS.rateLimitHits++;
 }
+
+// Export tracking functions for use by hooks
+(globalThis as any).securityTracker = {
+  trackBlockedRequest,
+  trackRateLimit
+};
