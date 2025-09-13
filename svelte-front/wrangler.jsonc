@@ -20,6 +20,12 @@
       "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
     },
   ],
+  "routes": [
+    {
+      "custom_domain": true,
+      "pattern": "https://val.io/",
+    },
+  ],
   "assets": {
     "binding": "ASSETS",
     "directory": ".svelte-kit/cloudflare",
