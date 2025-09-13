@@ -55,6 +55,9 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 	try {
 		const body = await request.text();
+		console.log('Shorten API - Body:', body);
+		console.log('Shorten API - User ID:', userId);
+		
 		const shortenerRequest = new Request('https://shortener/shorten', {
 			method: 'POST',
 			headers: {
@@ -64,8 +67,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			body
 		});
 
+		console.log('Making request to shortener service...');
 		const response = await env.SHORTENER.fetch(shortenerRequest);
+		console.log('Shortener response status:', response.status);
+		
 		const data = await response.text();
+		console.log('Shortener response data:', data);
 
 		return new Response(data, {
 			status: response.status,

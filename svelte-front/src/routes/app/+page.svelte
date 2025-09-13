@@ -62,13 +62,20 @@
 		isShortening = true;
 		try {
 			const result = await links.shortenUrl(urlInput.trim(), $authState.user.login);
+			console.log('Shorten result:', result); // Debug log
+			
+			if (!result || !result.shortCode) {
+				throw new Error('Invalid response: missing shortCode');
+			}
+			
 			shortenedResult = {
-				shortUrl: `${window.location.origin}/${result.shortCode}`,
+				shortUrl: result.shortUrl, // Use the shortUrl from API response
 				originalUrl: urlInput.trim(),
 				shortCode: result.shortCode
 			};
 			urlInput = '';
 		} catch (error) {
+			console.error('Shorten error:', error); // Debug log
 			shortenError = error.message || 'Failed to shorten URL. Please try again.';
 		} finally {
 			isShortening = false;

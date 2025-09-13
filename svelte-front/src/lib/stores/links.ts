@@ -127,7 +127,9 @@ const createLinksStore = () => {
         
         if (response.ok) {
           const apiResponse = data as ApiShortenResponse;
+          console.log('API Response:', apiResponse); // Debug log
           const newLink = transformApiLink(apiResponse);
+          console.log('Transformed Link:', newLink); // Debug log
           
           // Add new link to the beginning of the list
           update(state => {
