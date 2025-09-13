@@ -66,6 +66,18 @@ export const handle: Handle = async ({ event, resolve }) => {
   const path = url.pathname;
   const clientIP = getClientIP(request);
   
+  // Handle www subdomain redirect
+  if (url.hostname === 'www.val.io') {
+    const redirectUrl = `https://val.io${url.pathname}${url.search}${url.hash}`;
+    return new Response(null, {
+      status: 301,
+      headers: {
+        'Location': redirectUrl,
+        'Cache-Control': 'public, max-age=31536000' // Cache for 1 year
+      }
+    });
+  }
+  
   // Log suspicious requests
   if (isBlocked(path)) {
     console.log(`🔒 Blocked suspicious request: ${request.method} ${path} from ${clientIP}`);
