@@ -74,16 +74,13 @@ const createLinksStore = () => {
 
     // Load user's links
     loadLinks: async (userId?: string) => {
-      if (!browser || !userId) return;
+      if (!browser) return;
       
       try {
         update(state => ({ ...state, isLoading: true }));
         
         const response = await fetch('/api/links', {
-          credentials: 'include',
-          headers: {
-            'X-User-ID': userId
-          }
+          credentials: 'include'
         });
         
         const data = await response.json() as ApiLinksResponse | ErrorResponse;
@@ -114,14 +111,13 @@ const createLinksStore = () => {
 
     // Shorten URL
     shortenUrl: async (url: string, userId?: string) => {
-      if (!browser || !userId) return null;
+      if (!browser) return null;
       
       try {
         const response = await fetch('/api/shorten', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userId
+            'Content-Type': 'application/json'
           },
           credentials: 'include',
           body: JSON.stringify({ url })
@@ -160,15 +156,12 @@ const createLinksStore = () => {
 
     // Delete link
     deleteLink: async (shortCode: string, userId?: string) => {
-      if (!browser || !userId) return;
+      if (!browser) return;
       
       try {
         const response = await fetch(`/api/links/${shortCode}`, {
           method: 'DELETE',
-          credentials: 'include',
-          headers: {
-            'X-User-ID': userId
-          }
+          credentials: 'include'
         });
         
         if (response.ok) {

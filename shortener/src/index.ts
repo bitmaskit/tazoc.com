@@ -177,7 +177,7 @@ async function handleShorten(request: Request, env: Env): Promise<Response> {
     const response: LinkResponse = {
       id: storedLink.id,
       shortCode: storedLink.shortCode,
-      shortUrl: `https://short.ly/${storedLink.shortCode}`, // TODO: Use actual domain
+      shortUrl: `https://val.io/${storedLink.shortCode}`,
       originalUrl: storedLink.originalUrl,
       createdAt: storedLink.createdAt,
       expiresAt: storedLink.expiresAt,
@@ -236,7 +236,7 @@ async function handleGetLinks(request: Request, env: Env): Promise<Response> {
     const transformedLinks = result.links.map(link => ({
       id: link.id,
       shortCode: link.shortCode,
-      shortUrl: `https://short.ly/${link.shortCode}`, // TODO: Use actual domain
+      shortUrl: `https://val.io/${link.shortCode}`,
       originalUrl: link.originalUrl,
       createdAt: link.createdAt,
       expiresAt: link.expiresAt,
@@ -274,7 +274,7 @@ async function handleGetLink(shortCode: string, env: Env): Promise<Response> {
     const response: LinkResponse = {
       id: linkData.id,
       shortCode: linkData.shortCode,
-      shortUrl: `https://short.ly/${linkData.shortCode}`, // TODO: Use actual domain
+      shortUrl: `https://val.io/${linkData.shortCode}`,
       originalUrl: linkData.originalUrl,
       createdAt: linkData.createdAt,
       expiresAt: linkData.expiresAt,
