@@ -12,6 +12,8 @@
 	let isShortening = $state(false);
 	let searchQuery = $state('');
 	let userDropdownOpen = $state(false);
+	let shortenedResult = $state(null);
+	let shortenError = $state('');
 
 	// Redirect if not authenticated
 	$effect(() => {
@@ -53,10 +55,21 @@
 		e.preventDefault();
 		if (!urlInput.trim() || isShortening || !$authState.user) return;
 
+		// Reset states
+		shortenedResult = null;
+		shortenError = '';
+
 		isShortening = true;
 		try {
-			await links.shortenUrl(urlInput.trim(), $authState.user.login);
+			const result = await links.shortenUrl(urlInput.trim(), $authState.user.login);
+			shortenedResult = {
+				shortUrl: `${window.location.origin}/${result.shortCode}`,
+				originalUrl: urlInput.trim(),
+				shortCode: result.shortCode
+			};
 			urlInput = '';
+		} catch (error) {
+			shortenError = error.message || 'Failed to shorten URL. Please try again.';
 		} finally {
 			isShortening = false;
 		}
@@ -85,6 +98,14 @@
 			return `${diffDays} days ago`;
 		} else {
 			return date.toLocaleDateString();
+		}
+	}
+
+	async function copyToClipboard(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch (err) {
+			console.error('Failed to copy to clipboard:', err);
 		}
 	}
 
@@ -369,6 +390,56 @@
 									{isShortening ? 'Shortening...' : 'Shorten URL'}
 								</button>
 							</form>
+
+							<!-- Success Result -->
+							{#if shortenedResult}
+								<div class="mt-6 p-4 bg-green-900/20 border border-green-500/20 rounded-md">
+									<div class="flex items-start">
+										<div class="flex-shrink-0">
+											<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.236 4.53L7.53 10.53a.75.75 0 00-1.06 1.06l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+											</svg>
+										</div>
+										<div class="ml-3 flex-1">
+											<h3 class="text-sm font-medium text-green-400">URL Shortened Successfully!</h3>
+											<div class="mt-2">
+												<p class="text-sm text-gray-300 mb-2">Your shortened URL:</p>
+												<div class="flex items-center space-x-2 bg-gray-800/50 rounded-md p-3">
+													<code class="flex-1 text-sm text-white font-mono break-all">{shortenedResult.shortUrl}</code>
+													<button
+														onclick={() => copyToClipboard(shortenedResult.shortUrl)}
+														class="flex-shrink-0 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded transition-colors text-indigo-300 bg-indigo-900/20 hover:bg-indigo-900/30"
+														aria-label="Copy shortened URL"
+													>
+														<svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+															<path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.375a2.25 2.25 0 01-2.25-2.25V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+														</svg>
+														Copy
+													</button>
+												</div>
+												<p class="text-xs text-gray-400 mt-2">Original: {shortenedResult.originalUrl}</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							<!-- Error Display -->
+							{#if shortenError}
+								<div class="mt-4 p-4 bg-red-900/20 border border-red-500/20 rounded-md">
+									<div class="flex">
+										<div class="flex-shrink-0">
+											<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+											</svg>
+										</div>
+										<div class="ml-3">
+											<h3 class="text-sm font-medium text-red-400">Error</h3>
+											<p class="mt-1 text-sm text-red-300">{shortenError}</p>
+										</div>
+									</div>
+								</div>
+							{/if}
 						</div>
 					</div>
 					
