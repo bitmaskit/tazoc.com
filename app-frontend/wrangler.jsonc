@@ -1,0 +1,52 @@
+// https://developers.cloudflare.com/workers/wrangler/configuration/
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "app-frontend",
+  "compatibility_date": "2025-09-06",
+  "services": [
+    {
+      "binding": "RESOLVER",
+      "service": "resolver",
+    },
+    {
+      "binding": "SHORTENER",
+      "service": "shortener",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "f1b6c2a8e4d7f9a3b8c5d6e9f2a1b4c7",
+      "experimental_remote": true,
+    },
+  ],
+  "secrets_store_secrets": [
+    {
+      "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
+      "secret_name": "GITHUB_CLIENT_ID",
+      "binding": "GITHUB_CLIENT_ID",
+    },
+    {
+      "binding": "GITHUB_CLIENT_SECRET",
+      "secret_name": "GITHUB_CLIENT_SECRET",
+      "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
+    },
+  ],
+  "workers_dev": false,
+  "routes": [
+    {
+      "custom_domain": true,
+      "pattern": "app.val.io",
+    },
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".svelte-kit/cloudflare",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "placement": {
+    "mode": "smart",
+  },
+}
