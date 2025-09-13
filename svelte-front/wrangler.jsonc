@@ -20,6 +20,7 @@
       "store_id": "b78675f8e9f940e99ab0c43ede3bc229",
     },
   ],
+  "workers_dev": false,
   "routes": [
     {
       "custom_domain": true,
