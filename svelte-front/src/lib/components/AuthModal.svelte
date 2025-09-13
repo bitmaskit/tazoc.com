@@ -259,8 +259,7 @@
                             </form>
 
                             <div>
-                                <div>
-                                    > class="mt-10 flex items-center gap-x-6">
+                                <div class="mt-10 flex items-center gap-x-6">
                                     <div
                                         class="w-full flex-1 border-t border-white/10"
                                     ></div>

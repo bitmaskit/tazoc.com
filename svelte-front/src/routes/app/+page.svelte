@@ -111,8 +111,30 @@
 	async function copyToClipboard(text: string) {
 		try {
 			await navigator.clipboard.writeText(text);
+			// Show temporary success feedback
+			const button = event?.target as HTMLButtonElement;
+			if (button) {
+				const originalText = button.textContent;
+				button.textContent = 'Copied!';
+				button.classList.add('bg-green-600/20', 'text-green-300');
+				setTimeout(() => {
+					button.textContent = originalText;
+					button.classList.remove('bg-green-600/20', 'text-green-300');
+				}, 2000);
+			}
 		} catch (err) {
 			console.error('Failed to copy to clipboard:', err);
+			// Show error feedback
+			const button = event?.target as HTMLButtonElement;
+			if (button) {
+				const originalText = button.textContent;
+				button.textContent = 'Failed!';
+				button.classList.add('bg-red-600/20', 'text-red-300');
+				setTimeout(() => {
+					button.textContent = originalText;
+					button.classList.remove('bg-red-600/20', 'text-red-300');
+				}, 2000);
+			}
 		}
 	}
 
