@@ -77,20 +77,8 @@ const createAuthStore = () => {
     logout: async () => {
       if (!browser) return;
       
-      try {
-        await fetch('/api/logout', {
-          method: 'POST',
-          credentials: 'include'
-        });
-        
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false
-        });
-      } catch (error) {
-        console.error('Logout failed:', error);
-      }
+      // Redirect to val.io logout endpoint
+      window.location.href = 'https://val.io/api/logout';
     },
 
     // Set loading state

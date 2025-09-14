@@ -4,28 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a URL shortener service built on Cloudflare's edge infrastructure with two main components:
-- **Shortener Worker**: Handles URL redirects with KV caching and queues analytics events
-- **Queue Processor Worker**: Processes analytics data asynchronously from queue messages
+This is a URL shortener service built on Cloudflare's edge infrastructure with a clean two-worker architecture:
+- **Landing Worker**: Handles landing page, shortcode resolution, and authentication for val.io
+- **Dashboard Worker**: SvelteKit app for authenticated users on app.val.io
 
-The system uses Cloudflare Workers, KV storage, D1 database, and Queues to create a fast, scalable URL shortening service with comprehensive analytics.
+The system uses Cloudflare Workers, KV storage, D1 database, and cross-domain authentication to create a fast, scalable URL shortening service with user dashboard.
 
 ## Architecture
 
 ### Monorepo Structure
-- `resolver/` - Main worker that handles URL redirects with KV caching and D1 fallback
-- `shortener/` - Edge worker that handles redirects and sends analytics to queue (legacy)
+- `landing-worker/` - Simple Cloudflare Worker for val.io (landing page + shortcode resolution + auth)
+- `app-frontend/` - SvelteKit dashboard app for app.val.io (authenticated users only)
+- `resolver/` - Edge worker that handles redirects with KV caching and D1 fallback (legacy)
+- `shortener/` - Legacy worker for redirects and analytics
 - `queue-processor/` - Consumer worker that processes analytics events from queue
 - `types/` - Shared TypeScript interfaces and types (accessed via `@/types/*`)
 - `migrations/` - D1 database migration files
 - `scripts/` - Utility scripts for database migrations and deployment
 - Root workspace managed with pnpm workspaces
 
-### Data Flow
-1. User requests shortened URL → Shortener worker
-2. Worker checks KV cache → D1 database fallback → Returns redirect
-3. Analytics event sent to `shortener-analytics` queue (fire-and-forget)
-4. Queue processor worker processes analytics events and stores in D1
+### Authentication Flow
+1. User visits `app.val.io` → if not authenticated → redirects to `val.io/api/login?redirect=https://app.val.io`
+2. User authenticates on `val.io` → GitHub OAuth flow handled by landing worker
+3. After successful auth → landing worker redirects back to `app.val.io`  
+4. Session cookie with `Domain=.val.io` allows both domains to access auth state
+5. Dashboard shows authenticated user interface
+
+### Domain Routing
+- **www.val.io** → 301 redirect to val.io
+- **val.io/** → Landing page (if not authenticated) | Redirect to app.val.io (if authenticated)
+- **val.io/shortcode** → Resolve and redirect to destination URL
+- **val.io/api/login** → Initiate GitHub OAuth
+- **val.io/api/callback** → Process GitHub OAuth callback
+- **val.io/api/logout** → Clear session and redirect to val.io
+- **app.val.io/** → Dashboard (if authenticated) | Redirect to val.io (if not authenticated)
 
 ### Storage Systems
 - **KV Store**: High-speed cache for URL lookups (sub-millisecond)
@@ -41,25 +53,29 @@ pnpm install
 
 ### Development (Local)
 ```bash
-# Run resolver worker locally (main worker)
+# Run landing worker locally (val.io)
+cd landing-worker && pnpm dev
+
+# Run dashboard app locally (app.val.io)
+cd app-frontend && pnpm dev
+
+# Legacy workers (if needed)
 cd resolver && pnpm dev
-
-# Run shortener worker locally
 cd shortener && pnpm dev
-
-# Run queue processor worker locally  
 cd queue-processor && pnpm dev
 ```
 
 ### Deploy Workers
 ```bash
-# Deploy resolver worker (main worker)
+# Deploy landing worker (val.io)
+cd landing-worker && pnpm deploy
+
+# Deploy dashboard worker (app.val.io)
+cd app-frontend && pnpm build && pnpm deploy
+
+# Legacy workers (if needed)
 cd resolver && pnpm deploy
-
-# Deploy shortener worker
 cd shortener && pnpm deploy
-
-# Deploy queue processor worker
 cd queue-processor && pnpm deploy
 ```
 
@@ -77,33 +93,36 @@ wrangler d1 execute --remote --command=".tables" --database="1c57b49e-f457-458d-
 
 ### Generate Types
 ```bash
-# Generate Cloudflare types for resolver
+# Generate Cloudflare types for landing worker
+cd landing-worker && pnpm cf-typegen
+
+# Generate Cloudflare types for dashboard
+cd app-frontend && pnpm cf-typegen
+
+# Legacy workers (if needed)
 cd resolver && pnpm cf-typegen
-
-# Generate Cloudflare types for shortener
 cd shortener && pnpm cf-typegen
-
-# Generate Cloudflare types for queue processor
 cd queue-processor && pnpm cf-typegen
 ```
 
 ### Testing
 ```bash
-# Run tests for resolver (when implemented)
-cd resolver && pnpm test
+# Run tests for dashboard (when implemented)
+cd app-frontend && pnpm test
 
-# Run tests for shortener (when implemented)
+# Legacy workers (if needed)
+cd resolver && pnpm test
 cd shortener && pnpm test
 ```
 
 ## Key Configuration
 
 ### Wrangler Configuration
-- Both workers use `wrangler.jsonc` for configuration
-- Shortener worker is a queue producer (`shortener_analytics` binding)
-- Queue processor worker is a queue consumer for `shortener-analytics`
-- Observability enabled for both workers
-- Smart placement mode configured
+- **Landing Worker**: Simple Cloudflare Worker with KV, D1, and secrets bindings for authentication
+- **Dashboard Worker**: SvelteKit app with KV sessions and service bindings to other workers  
+- All workers use `wrangler.jsonc` for configuration
+- Observability enabled for production monitoring
+- Smart placement mode configured for optimal performance
 
 ### Queue Setup
 - Queue name: `shortener-analytics`
@@ -135,18 +154,28 @@ cd shortener && pnpm test
 
 - **TypeScript Configuration**: All workers use strict TypeScript with path mapping
 - **Import Paths**: Use `@/types/*` to import shared types from root `types/` directory
-- **Analytics Pipeline**: Complete analytics data collection implemented, queue processing ready for D1 storage
-- **Landing Page**: Friendly UI served at root path via static assets
-- **Type Safety**: `AnalyticsData` interface ensures consistent data structure across workers
+- **Cross-Domain Authentication**: Session cookies with `Domain=.val.io` enable seamless auth across subdomains
+- **Landing Page**: Clean HTML template served from landing worker for marketing and auth
+- **Dashboard**: Full SvelteKit app with reactive components and stores for authenticated users
+- **Type Safety**: Shared TypeScript interfaces ensure consistent data structure across workers
+- **Redirect Loop Prevention**: Clean separation of auth (val.io) and dashboard (app.val.io) domains
 - No Go code in this project (contrary to global instructions)
 
 ## Infrastructure Requirements
 
 Before deployment:
-1. Create `shortener-analytics` queue in Cloudflare dashboard
-2. Create D1 database and run migrations: `./scripts/migrate.sh`
-3. Create KV namespace for URL caching
-4. Configure wrangler.jsonc with proper bindings for KV, D1, and queue
+1. Create D1 database and run migrations: `./scripts/migrate.sh`
+2. Create KV namespaces:
+   - `LINKS` - URL caching and storage
+   - `SESSIONS` - Cross-domain session management
+3. Create secrets store with GitHub OAuth credentials:
+   - `GITHUB_CLIENT_ID`
+   - `GITHUB_CLIENT_SECRET`
+4. Configure domain routing:
+   - `val.io` → landing-worker
+   - `www.val.io` → landing-worker  
+   - `app.val.io` → app-frontend
+5. Optional: Create `shortener-analytics` queue for legacy workers
 
 ## Database Migrations
 
