@@ -11,7 +11,10 @@ export const GET: RequestHandler = async ({ platform, url }) => {
     return new Response('GitHub client ID not found', { status: 500 });
   }
 
-  const state = crypto.randomUUID();
+  const redirectUrl = url.searchParams.get('redirect');
+  const stateData = { uuid: crypto.randomUUID(), redirect: redirectUrl };
+  const state = btoa(JSON.stringify(stateData));
+  
   const params = new URLSearchParams({
     client_id: clientId,
     scope: 'read:user user:email',

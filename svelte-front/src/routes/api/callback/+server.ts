@@ -35,10 +35,11 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   }, {} as Record<string, string>);
 }
 
-function cookie(name: string, value: string, opts: { expires?: Date; path?: string } = {}): string {
+function cookie(name: string, value: string, opts: { expires?: Date; path?: string; domain?: string } = {}): string {
   let str = `${name}=${value}`;
   if (opts.expires) str += `; Expires=${opts.expires.toUTCString()}`;
   if (opts.path) str += `; Path=${opts.path}`;
+  if (opts.domain) str += `; Domain=${opts.domain}`;
   str += '; HttpOnly; Secure; SameSite=Lax';
   return str;
 }
@@ -63,9 +64,19 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
     return new Response('Missing code or state parameter', { status: 400 });
   }
 
-  // Verify state parameter
+  // Verify state parameter and extract redirect URL
   const cookies = parseCookies(request.headers.get('Cookie') || '');
-  if (cookies.oauth_state !== state) {
+  let stateData: { uuid: string; redirect?: string };
+  let redirectUrl: string | null = null;
+  
+  try {
+    stateData = JSON.parse(atob(state));
+    redirectUrl = stateData.redirect;
+  } catch {
+    return new Response('Invalid state parameter format', { status: 400 });
+  }
+  
+  if (cookies.oauth_state !== stateData.uuid) {
     return new Response('Invalid state parameter', { status: 400 });
   }
 
@@ -115,11 +126,12 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
       expires: expires.toISOString()
     }), { expirationTtl: 30 * 24 * 60 * 60 }); // 30 days
 
+    const finalRedirect = redirectUrl || 'https://app.val.io';
     const response = new Response(null, {
       status: 302,
       headers: {
-        Location: '/app',
-        'Set-Cookie': cookie('session_id', sessionId, { expires, path: '/' })
+        Location: finalRedirect,
+        'Set-Cookie': cookie('session_id', sessionId, { expires, path: '/', domain: '.val.io' })
       }
     });
 

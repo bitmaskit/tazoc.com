@@ -69,7 +69,8 @@ const createAuthStore = () => {
     // Login with GitHub
     login: () => {
       if (!browser) return;
-      window.location.href = '/api/login';
+      const currentUrl = window.location.href;
+      window.location.href = `https://val.io/api/login?redirect=${encodeURIComponent(currentUrl)}`;
     },
 
     // Logout

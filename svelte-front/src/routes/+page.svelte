@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { auth } from '$lib/stores/auth';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import AuthModal from '$lib/components/AuthModal.svelte';
 
 	const authState = auth;
@@ -17,7 +18,9 @@
 	// Redirect to app if already authenticated
 	$effect(() => {
 		if ($authState.isAuthenticated) {
-			window.location.href = 'https://app.val.io';
+			const redirectUrl = $page.url.searchParams.get('redirect');
+			const targetUrl = redirectUrl || 'https://app.val.io';
+			window.location.href = targetUrl;
 		}
 	});
 </script>
