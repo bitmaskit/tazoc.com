@@ -17,7 +17,6 @@
     {
       "binding": "SESSIONS",
       "id": "f1b6c2a8e4d7f9a3b8c5d6e9f2a1b4c7",
-      "experimental_remote": true,
     },
   ],
   "secrets_store_secrets": [
