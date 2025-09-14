@@ -1,14 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "landing-worker",
+  "name": "landing",
   "main": "src/index.ts",
-  "compatibility_date": "2025-09-06",
-  "services": [
-    {
-      "binding": "RESOLVER",
-      "service": "resolver",
-    },
-  ],
+  "compatibility_date": "2025-09-13",
+  "observability": {
+    "enabled": true,
+  },
+  "placement": { "mode": "smart" },
   "kv_namespaces": [
     {
       "binding": "LINKS",
@@ -17,6 +15,12 @@
     {
       "binding": "SESSIONS",
       "id": "b0429b5a06f74cd58540076caf10e04d",
+    },
+  ],
+  "services": [
+    {
+      "binding": "RESOLVER",
+      "service": "resolver",
     },
   ],
   "d1_databases": [
@@ -49,10 +53,4 @@
       "custom_domain": true,
     },
   ],
-  "observability": {
-    "enabled": true,
-  },
-  "placement": {
-    "mode": "smart",
-  },
 }
