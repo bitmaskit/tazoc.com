@@ -38,12 +38,12 @@
   "workers_dev": false,
   "routes": [
     {
+      "zone_id": "ccd23504b5a40a61d2a0c68bf1683ac1",
       "pattern": "val.io/*",
-      "custom_domain": true,
     },
     {
       "pattern": "www.val.io/*",
-      "custom_domain": true,
+      "zone_id": "ccd23504b5a40a61d2a0c68bf1683ac1",
     },
   ],
 }
