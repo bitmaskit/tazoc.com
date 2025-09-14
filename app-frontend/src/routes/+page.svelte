@@ -5,11 +5,10 @@
 
 	const authState = auth;
 
-	// Redirect unauthenticated users to main domain
+	// Return 404 for unauthenticated users instead of redirecting
 	$effect(() => {
 		if (!$authState.isLoading && !$authState.isAuthenticated) {
-			// Redirect to main domain for authentication
-			window.location.href = `https://val.io/?redirect=${encodeURIComponent($page.url.href)}`;
+			// Return 404 to break redirect loops - let the template handle this
 		}
 	});
 </script>
@@ -26,12 +25,11 @@
 	<!-- Dashboard -->
 	<Dashboard />
 {:else}
-	<!-- Authentication required message -->
+	<!-- Return 404 for unauthenticated users -->
 	<div class="min-h-screen flex items-center justify-center">
 		<div class="text-center">
-			<h1 class="text-2xl font-bold text-white mb-4">Authentication Required</h1>
-			<p class="text-gray-400 mb-6">Redirecting to sign in...</p>
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+			<h1 class="text-9xl font-bold text-white mb-4">404</h1>
+			<p class="text-gray-400 text-xl">Page Not Found</p>
 		</div>
 	</div>
 {/if}
