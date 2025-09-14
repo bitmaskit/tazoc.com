@@ -1,6 +1,5 @@
 import { landingPageHTML } from "./templates/landing";
 import { handleAuth } from "./auth";
-import { handleShortcode } from "./shortcode";
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
