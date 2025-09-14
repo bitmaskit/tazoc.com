@@ -118,7 +118,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
     const response = new Response(null, {
       status: 302,
       headers: {
-        Location: '/app',
+        Location: 'https://app.val.io',
         'Set-Cookie': cookie('session_id', sessionId, { expires, path: '/' })
       }
     });

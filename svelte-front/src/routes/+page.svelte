@@ -17,7 +17,7 @@
 	// Redirect to app if already authenticated
 	$effect(() => {
 		if ($authState.isAuthenticated) {
-			goto('/app');
+			window.location.href = 'https://app.val.io';
 		}
 	});
 </script>
